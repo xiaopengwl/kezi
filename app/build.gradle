@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 1
-        versionName '2.6-xiaomaojs-player-ui-icon'
+        versionName '2.7-xiaomaojs-jsruntime-fix'
     }
 
     buildTypes {
