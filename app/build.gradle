@@ -9,6 +9,6 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 1
-        versionName '2.1-xiaopeng-ui-artplayer'
+        versionName '2.2-detail-landscape-multisource'
     }
 }
