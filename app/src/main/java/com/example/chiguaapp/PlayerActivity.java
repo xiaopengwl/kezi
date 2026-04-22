@@ -89,30 +89,6 @@ public class PlayerActivity extends Activity {
     };
 
     @Override
-    public void onBackPressed() {
-        if (Jzvd.backPress()) {
-            return;
-        }
-        super.onBackPressed();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        handler.removeCallbacks(hideState);
-        Jzvd.releaseAllVideos();
-        releaseSniffer();
-    }
-
-    @Override
-    protected void onDestroy() {
-        handler.removeCallbacksAndMessages(null);
-        Jzvd.releaseAllVideos();
-        releaseSniffer();
-        super.onDestroy();
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
