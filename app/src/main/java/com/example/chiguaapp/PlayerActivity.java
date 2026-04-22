@@ -2,16 +2,19 @@ package com.example.chiguaapp;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -20,7 +23,6 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
@@ -32,19 +34,25 @@ import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.exoplayer.source.ProgressiveMediaSource;
 import androidx.media3.ui.PlayerView;
 
+import java.util.Locale;
+
 public class PlayerActivity extends Activity {
     private FrameLayout root;
     private PlayerView playerView;
+    private View gestureLayer;
     private LinearLayout topBar;
     private TextView titleView;
     private TextView stateView;
+    private TextView gestureView;
     private ProgressBar loading;
     private TextView retryBtn;
     private TextView externalBtn;
+    private TextView fullscreenBtn;
 
     private SourceConfig source;
     private DrpyEngine engine;
     private ExoPlayer player;
+    private AudioManager audioManager;
     private String title;
     private String line;
     private String input;
@@ -52,10 +60,42 @@ public class PlayerActivity extends Activity {
     private boolean resolved;
     private final Handler handler = new Handler();
 
+    private static final int GESTURE_NONE = 0;
+    private static final int GESTURE_SEEK = 1;
+    private static final int GESTURE_VOLUME = 2;
+    private static final int GESTURE_BRIGHTNESS = 3;
+
+    private int gestureMode = GESTURE_NONE;
+    private float downX;
+    private float downY;
+    private long seekStartPosition;
+    private long seekPreviewPosition;
+    private int startVolume;
+    private int maxVolume;
+    private float startBrightness = -1f;
+    private boolean gestureLocked;
+
     private final Runnable hideBars = new Runnable() {
         @Override public void run() {
-            if (topBar != null && resolved) topBar.animate().alpha(0f).setDuration(220).start();
-            if (stateView != null && resolved) stateView.animate().alpha(0f).setDuration(220).start();
+            if (topBar != null && resolved) {
+                topBar.animate().alpha(0f).setDuration(220).withEndAction(() -> topBar.setVisibility(View.GONE)).start();
+            }
+            if (stateView != null && resolved) {
+                stateView.animate().alpha(0f).setDuration(220).withEndAction(() -> stateView.setVisibility(View.GONE)).start();
+            }
+            if (gestureView != null) {
+                gestureView.animate().alpha(0f).setDuration(180).withEndAction(() -> gestureView.setVisibility(View.GONE)).start();
+            }
+            if (playerView != null) playerView.hideController();
+            immersive();
+        }
+    };
+
+    private final Runnable hideGestureTip = new Runnable() {
+        @Override public void run() {
+            if (gestureView != null) {
+                gestureView.animate().alpha(0f).setDuration(180).withEndAction(() -> gestureView.setVisibility(View.GONE)).start();
+            }
         }
     };
 
@@ -78,6 +118,12 @@ public class PlayerActivity extends Activity {
         source = SourceConfig.load(this);
         Scraper.useSource(source);
         engine = new DrpyEngine(this, source);
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        if (audioManager != null) {
+            maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        } else {
+            maxVolume = 15;
+        }
 
         buildUi();
         resolveAndPlay();
@@ -90,10 +136,17 @@ public class PlayerActivity extends Activity {
         playerView = new PlayerView(this);
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
+        playerView.setControllerHideOnTouch(false);
         playerView.setKeepContentOnPlayerReset(true);
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER);
         playerView.setShutterBackgroundColor(Color.BLACK);
         root.addView(playerView, new FrameLayout.LayoutParams(-1, -1));
+
+        gestureLayer = new View(this);
+        gestureLayer.setBackgroundColor(Color.TRANSPARENT);
+        gestureLayer.setClickable(true);
+        gestureLayer.setOnTouchListener((v, event) -> handleGesture(event));
+        root.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
 
         topBar = new LinearLayout(this);
         topBar.setOrientation(LinearLayout.HORIZONTAL);
@@ -123,6 +176,12 @@ public class PlayerActivity extends Activity {
         ep.leftMargin = dp(8);
         topBar.addView(externalBtn, ep);
 
+        fullscreenBtn = pill("全屏", "#0E8F6A");
+        fullscreenBtn.setOnClickListener(v -> forceFullscreen());
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-2, dp(36));
+        fp.leftMargin = dp(8);
+        topBar.addView(fullscreenBtn, fp);
+
         root.addView(topBar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
         LinearLayout center = new LinearLayout(this);
@@ -139,8 +198,20 @@ public class PlayerActivity extends Activity {
         center.addView(stateView, new LinearLayout.LayoutParams(-2, -2));
         root.addView(center, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
 
-        playerView.setOnClickListener(v -> showBarsTemporarily());
+        gestureView = new TextView(this);
+        gestureView.setTextColor(Color.WHITE);
+        gestureView.setTextSize(18);
+        gestureView.setGravity(Gravity.CENTER);
+        gestureView.setPadding(dp(20), dp(14), dp(20), dp(14));
+        GradientDrawable tipBg = new GradientDrawable();
+        tipBg.setColor(Color.parseColor("#CC101626"));
+        tipBg.setCornerRadius(dp(16));
+        gestureView.setBackground(tipBg);
+        gestureView.setVisibility(View.GONE);
+        root.addView(gestureView, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+
         root.setOnClickListener(v -> showBarsTemporarily());
+        playerView.setOnClickListener(v -> showBarsTemporarily());
 
         setContentView(root);
     }
@@ -224,15 +295,18 @@ public class PlayerActivity extends Activity {
                     loading.setVisibility(View.VISIBLE);
                     stateView.setVisibility(View.VISIBLE);
                     stateView.setAlpha(1f);
-                    stateView.setText("缓冲中… 如卡顿可返回详情页切换线路");
+                    stateView.setText("缓冲中… 左侧上下调音量，右侧上下调亮度，左右滑动调进度");
                 } else if (state == Player.STATE_READY) {
                     resolved = true;
                     loading.setVisibility(View.GONE);
+                    stateView.setVisibility(View.VISIBLE);
                     stateView.setAlpha(1f);
-                    stateView.setText("正在播放 · 可点右上角切外部播放器");
+                    stateView.setText("正在播放 · 点按唤出控制栏 · 左侧音量 / 右侧亮度 / 左右滑动快进快退");
                     handler.postDelayed(() -> {
-                        if (stateView != null) stateView.animate().alpha(0f).setDuration(220).start();
-                    }, 1500);
+                        if (stateView != null) {
+                            stateView.animate().alpha(0f).setDuration(220).withEndAction(() -> stateView.setVisibility(View.GONE)).start();
+                        }
+                    }, 1800);
                     showBarsTemporarily();
                 } else if (state == Player.STATE_ENDED) {
                     stateView.setVisibility(View.VISIBLE);
@@ -267,6 +341,147 @@ public class PlayerActivity extends Activity {
         return new ProgressiveMediaSource.Factory(factory).createMediaSource(item);
     }
 
+    private boolean handleGesture(MotionEvent event) {
+        if (event == null) return false;
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                gestureLocked = false;
+                gestureMode = GESTURE_NONE;
+                downX = event.getX();
+                downY = event.getY();
+                seekStartPosition = player != null ? Math.max(player.getCurrentPosition(), 0) : 0;
+                seekPreviewPosition = seekStartPosition;
+                startVolume = audioManager != null ? audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) : 0;
+                startBrightness = currentBrightness();
+                handler.removeCallbacks(hideBars);
+                handler.removeCallbacks(hideGestureTip);
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                float dx = event.getX() - downX;
+                float dy = event.getY() - downY;
+                if (!gestureLocked) {
+                    if (Math.abs(dx) < dp(12) && Math.abs(dy) < dp(12)) return true;
+                    gestureLocked = true;
+                    if (Math.abs(dx) >= Math.abs(dy)) {
+                        gestureMode = GESTURE_SEEK;
+                    } else if (downX < root.getWidth() / 2f) {
+                        gestureMode = GESTURE_VOLUME;
+                    } else {
+                        gestureMode = GESTURE_BRIGHTNESS;
+                    }
+                }
+                if (gestureMode == GESTURE_SEEK) {
+                    updateSeek(dx);
+                } else if (gestureMode == GESTURE_VOLUME) {
+                    updateVolume(dy);
+                } else if (gestureMode == GESTURE_BRIGHTNESS) {
+                    updateBrightness(dy);
+                }
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                finishGesture();
+                if (!gestureLocked) {
+                    showBarsTemporarily();
+                }
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void updateSeek(float dx) {
+        if (player == null) return;
+        long duration = player.getDuration();
+        if (duration <= 0) duration = 0;
+        long delta = (long) ((dx / Math.max(root.getWidth(), 1)) * 600000L);
+        seekPreviewPosition = seekStartPosition + delta;
+        if (duration > 0) {
+            seekPreviewPosition = Math.max(0, Math.min(duration, seekPreviewPosition));
+        } else {
+            seekPreviewPosition = Math.max(0, seekPreviewPosition);
+        }
+        String direction = delta >= 0 ? "快进" : "快退";
+        showGestureTip(direction + "\n" + formatTime(seekPreviewPosition) + " / " + formatTime(duration));
+    }
+
+    private void updateVolume(float dy) {
+        if (audioManager == null || maxVolume <= 0) return;
+        float percentDelta = (-dy) / Math.max(root.getHeight(), 1);
+        int target = startVolume + Math.round(percentDelta * maxVolume * 1.6f);
+        target = Math.max(0, Math.min(maxVolume, target));
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
+        int percent = Math.round(target * 100f / maxVolume);
+        showGestureTip("音量\n" + percent + "%");
+    }
+
+    private void updateBrightness(float dy) {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        float base = startBrightness;
+        float percentDelta = (-dy) / Math.max(root.getHeight(), 1);
+        float target = base + percentDelta * 1.2f;
+        if (target < 0.05f) target = 0.05f;
+        if (target > 1f) target = 1f;
+        lp.screenBrightness = target;
+        getWindow().setAttributes(lp);
+        int percent = Math.round(target * 100f);
+        showGestureTip("亮度\n" + percent + "%");
+    }
+
+    private void finishGesture() {
+        if (gestureMode == GESTURE_SEEK && player != null) {
+            player.seekTo(Math.max(0, seekPreviewPosition));
+            showGestureTip("已定位到\n" + formatTime(seekPreviewPosition));
+            handler.postDelayed(hideGestureTip, 700);
+        } else if (gestureMode == GESTURE_VOLUME || gestureMode == GESTURE_BRIGHTNESS) {
+            handler.postDelayed(hideGestureTip, 500);
+        }
+        gestureMode = GESTURE_NONE;
+        gestureLocked = false;
+        showBarsTemporarily();
+    }
+
+    private float currentBrightness() {
+        float b = getWindow().getAttributes().screenBrightness;
+        if (b <= 0f) b = 0.5f;
+        return b;
+    }
+
+    private void showGestureTip(String text) {
+        if (gestureView == null) return;
+        handler.removeCallbacks(hideGestureTip);
+        gestureView.setText(text);
+        gestureView.setVisibility(View.VISIBLE);
+        gestureView.setAlpha(1f);
+    }
+
+    private String formatTime(long ms) {
+        if (ms < 0) ms = 0;
+        long total = ms / 1000;
+        long s = total % 60;
+        long m = (total / 60) % 60;
+        long h = total / 3600;
+        if (h > 0) return String.format(Locale.getDefault(), "%d:%02d:%02d", h, m, s);
+        return String.format(Locale.getDefault(), "%02d:%02d", m, s);
+    }
+
+    private void forceFullscreen() {
+        immersive();
+        if (playerView != null) playerView.hideController();
+        if (topBar != null) {
+            topBar.setVisibility(View.GONE);
+            topBar.setAlpha(0f);
+        }
+        if (stateView != null) {
+            stateView.setVisibility(View.GONE);
+            stateView.setAlpha(0f);
+        }
+        if (gestureView != null) {
+            gestureView.setVisibility(View.GONE);
+            gestureView.setAlpha(0f);
+        }
+    }
+
     private void showError(String msg) {
         releasePlayer();
         loading.setVisibility(View.GONE);
@@ -297,6 +512,8 @@ public class PlayerActivity extends Activity {
 
     private void releasePlayer() {
         handler.removeCallbacks(hideBars);
+        handler.removeCallbacks(hideGestureTip);
+        if (playerView != null) playerView.setPlayer(null);
         if (player != null) {
             player.release();
             player = null;
@@ -309,11 +526,13 @@ public class PlayerActivity extends Activity {
             topBar.setVisibility(View.VISIBLE);
             topBar.animate().alpha(1f).setDuration(120).start();
         }
-        if (stateView != null) {
+        if (stateView != null && (stateView.getText() != null && stateView.getText().length() > 0)) {
             stateView.setVisibility(View.VISIBLE);
             stateView.animate().alpha(1f).setDuration(120).start();
         }
+        if (playerView != null) playerView.showController();
         handler.postDelayed(hideBars, resolved ? 3500 : 6000);
+        immersive();
     }
 
     private void immersive() {
