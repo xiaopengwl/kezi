@@ -1,73 +1,42 @@
-# 吃瓜 v32 安卓项目
+# 晓鹏影视 Android
 
-这是根据 `chigua_t3_js_drpy_v32_playurl_fix.js` 迁移的原生 Android Java 项目，可直接用 Android Studio 打开。
+轻量版 drpy/t3-js 安卓影视壳，内置 WebView JS 执行引擎，可添加多个视频源并在线播放。
 
-## 已迁移能力
+## 本版更新
 
-- 首页/推荐列表扫描 `/archives/`
-- 24 个分类入口
-- 搜索 `/search/关键词/页码/`
-- 翻页
-- 详情页解析：标题、简介、播放节点
-- 播放地址提取：优先解析 `data-config` 里的 `.m3u8/.mp4`，失败时打开原详情页
-- 内置 `VideoView` 播放；播放失败时自动调用外部播放器/浏览器
-- 新增“源管理”：可以直接粘贴 `var rule = {...}` 这种 drpy/t3-js 源
-- 新增 WebView JS 执行引擎：实际执行源里的 `推荐 / 一级 / 搜索 / 二级 / lazy`
-- Java Bridge 提供 `request()`、`setResult()`、`input`、`rule` 等常用 drpy 运行环境
+- 软件名改为：**晓鹏影视**
+- 首页 UI 重做：深色高级风格、顶部品牌区、分类胶囊、影视封面卡片
+- 列表支持影视封面图加载；没有封面时显示高级渐变占位
+- 源管理升级：支持添加、切换、保存、删除多个源
+- 播放页接入 **ArtPlayer.js**，并内置 hls.js 支持 m3u8
+- 继续支持 drpy/t3-js 源里的 `推荐 / 一级 / 搜索 / 二级 / lazy`
 
-## 自定义添加源
+## 使用
 
-1. 打开 App 首页。
-2. 点右上角“源管理”。
-3. 粘贴完整 `var rule = {...}` drpy/t3-js 源。
-4. 点“保存源”，返回首页会自动按该源运行。
+1. 打开 App。
+2. 首页点击右上角「源管理」。
+3. 可粘贴完整 `var rule = {...}` 源。
+4. 点击「新增源」添加新源，或「保存当前」覆盖当前源。
+5. 点击源列表可切换源；「删除当前」可删除当前源。
+6. 进入详情页后选择播放节点，会用 ArtPlayer 播放。
 
-当前已支持这类源的核心流程：
+## GitHub Actions 打包
 
-- `class_name / class_url` 分类读取
-- `推荐` 首页执行
-- `一级` 分类执行
-- `搜索` 执行
-- `二级` 详情执行，读取 `VOD` 或 `setResult`
-- `lazy` 播放地址解析，支持返回 `{url: ...}`
+仓库已包含：
 
-说明：这是轻量版 drpy 安卓壳，已能执行 JS 源的核心逻辑；如果某些源依赖更完整的道长/zyfun 内置 API，需要继续在 `DrpyEngine.java` 里补对应函数。
+```text
+.github/workflows/android-debug-apk.yml
+```
 
-## 使用方法
+打包方式：
 
-### 方案 A：本地 Android Studio 运行
-
-1. 用 Android Studio 打开本目录 `chigua-android-app`。
-2. 等待 Gradle 同步。
-3. 连接安卓手机，点击 Run。
-
-### 方案 B：GitHub Actions 在线自动打包 APK（更省事）
-
-如果你不想本地配 Android 环境，可以直接用仓库自带的 GitHub Actions：
-
-1. 把整个 `chigua-android-app` 上传到一个 GitHub 仓库。
-2. 确保仓库里包含这个文件：
-   - `.github/workflows/android-debug-apk.yml`
-3. 打开 GitHub 仓库页面：
-   - `Actions` → `Android Debug APK` → `Run workflow`
-4. 等待 3~10 分钟左右。
-5. 运行成功后，在本次 workflow 的 `Artifacts` 里下载：
-   - `app-debug-apk`
-6. 解压后得到：
-   - `app-debug.apk`
-
-这个流程会在 GitHub 云端自动：
-
-- 安装 JDK 17
-- 安装 Android SDK 35
-- 安装 Build Tools 35.0.0
-- 执行 `gradle assembleDebug`
-- 自动上传编译好的 debug APK
-
-> 注意：首次上传到 GitHub 后，如果默认分支不是 `main/master`，也没关系，你仍然可以手动点 `Run workflow`。
+1. 打开 GitHub 仓库。
+2. 进入 `Actions`。
+3. 选择 `Android Debug APK`。
+4. 点击 `Run workflow`。
+5. 成功后下载 `Artifacts -> app-debug-apk`。
+6. 解压得到 `app-debug.apk`。
 
 ## 说明
 
-- 当前环境没有 Android SDK/Gradle，所以我已生成源码项目，但未在本机编译 APK。
-- 这个版本没有引入第三方依赖，避免因为依赖下载失败导致导入报错。
-- 如果目标站域名失效，可直接在 App 的“源管理”里粘贴新源，或在 `Scraper.java` 的 `HOSTS` / `SourceConfig.java` 里补域名。
+这是轻量版 drpy 安卓壳。已实现常用流程，但如果某些源依赖特殊内置 API，后续需要在 `DrpyEngine.java` 继续补桥接函数。
