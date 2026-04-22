@@ -117,8 +117,8 @@ public class PlayerActivity extends Activity {
         scroll.addView(root, new ScrollView.LayoutParams(-1, -1));
 
         playerBox = new FrameLayout(this);
-        playerBox.setBackground(cardBg("#0E1118", "#26324A", 22));
-        LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, dp(220));
+        playerBox.setBackground(cardBg("#05070B", "#202A3B", 22));
+        LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, dp(232));
         root.addView(playerBox, playerLp);
 
         playerWeb = createPlayerWebView();
@@ -162,7 +162,7 @@ public class PlayerActivity extends Activity {
         infoCard.addView(lineView);
 
         TextView tip = new TextView(this);
-        tip.setText("上面直接播放，下面直接切集。这里只保留最简单结构，不再放全屏、重试、外部、沉浸这些按钮。\n如果不是直链，会自动网页嗅探后再播。");
+        tip.setText("播放器内核改成更接近 ArtPlayer 官方 mobile 版的样式：上面是沉浸式移动播放器，下面保留最简单的切集按钮。遇到非直链时，仍然自动网页嗅探后再播。");
         tip.setTextColor(Color.parseColor("#C9D4F4"));
         tip.setTextSize(13);
         tip.setPadding(0, dp(14), 0, 0);
@@ -429,17 +429,18 @@ public class PlayerActivity extends Activity {
         String safeUrl = jsString(mediaUrl);
         String safeTitle = jsString(title);
         return "<!doctype html><html><head><meta charset='utf-8'>"
-                + "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>"
-                + "<style>html,body,#player{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;} .art-video-player{background:#000!important;}</style>"
-                + "</head><body><div id='player'></div>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no'>"
+                + "<style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#fff;}#mount{position:relative;width:100%;height:100%;background:#000;}#player{position:absolute;inset:0;}#centerPlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9;transition:opacity .2s ease,transform .2s ease;}#centerPlay:after{content:'';margin-left:4px;border-left:18px solid rgba(255,255,255,.95);border-top:11px solid transparent;border-bottom:11px solid transparent;}#centerPlay.hide{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.92);}#titleFade{position:absolute;left:0;right:0;top:0;padding:14px 14px 28px;background:linear-gradient(180deg,rgba(0,0,0,.70),rgba(0,0,0,0));font-size:14px;font-weight:600;letter-spacing:.2px;z-index:8;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.35);} .art-video-player{background:#000!important;} .art-video-player .art-controls{background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.78))!important;padding-bottom:2px!important;} .art-video-player .art-bottom{padding:0 10px 10px!important;} .art-video-player .art-progress{height:3px!important;} .art-video-player .art-control .art-icon{transform:scale(.96);} .art-video-player .art-setting-panel{background:rgba(13,17,23,.95)!important;border:1px solid rgba(120,140,180,.25);} </style>"
+                + "</head><body><div id='mount'><div id='player'></div><div id='titleFade'>" + safeTitle + "</div><div id='centerPlay'></div></div>"
                 + "<script src='https://cdn.jsdelivr.net/npm/hls.js@latest'></script>"
                 + "<script src='https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js'></script>"
                 + "<script>"
                 + "var url='" + safeUrl + "';"
-                + "var title='" + safeTitle + "';"
                 + "function postReady(){try{HermesPlayer.onReady();}catch(e){}}"
                 + "function postError(msg){try{HermesPlayer.onError(String(msg||''));}catch(e){}}"
-                + "try{var art=new Artplayer({container:'#player',url:url,title:title,autoplay:true,autoSize:true,fullscreen:false,fullscreenWeb:false,pip:false,screenshot:false,setting:true,hotkey:true,playbackRate:true,aspectRatio:true,theme:'#6D7CFF',moreVideoAttr:{crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls();hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});art.on('ready',function(){postReady();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});}catch(e){postError(e&&e.message?e.message:'player init error');}"
+                + "var center=document.getElementById('centerPlay');"
+                + "function hideCenter(){center.classList.add('hide');}function showCenter(){center.classList.remove('hide');}"
+                + "try{var art=new Artplayer({container:'#player',url:url,autoplay:true,autoSize:true,setting:true,flip:false,pip:false,screenshot:false,fullscreen:false,fullscreenWeb:false,miniProgressBar:true,backdrop:true,hotkey:false,playbackRate:true,aspectRatio:true,theme:'#4CCB89',mutex:true,volume:.7,moreVideoAttr:{playsinline:true,webkitPlaysinline:true,x5VideoPlayerType:'h5-page',x5VideoPlayerFullscreen:false,crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls({enableWorker:true,lowLatencyMode:false});hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});center.addEventListener('click',function(){art.play();hideCenter();});art.on('ready',function(){postReady();});art.on('play',function(){hideCenter();});art.on('pause',function(){showCenter();});art.on('video:ended',function(){showCenter();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});setTimeout(function(){hideCenter();},1200);}catch(e){postError(e&&e.message?e.message:'player init error');}"
                 + "</script></body></html>";
     }
 
