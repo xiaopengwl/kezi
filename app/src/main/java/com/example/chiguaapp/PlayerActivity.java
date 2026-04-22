@@ -190,7 +190,7 @@ public class PlayerActivity extends Activity {
         playerBox.setBackground(cardBg("#05070B", "#151B2A", 0));
         page.addView(playerBox, new LinearLayout.LayoutParams(-1, dp(232)));
 
-        jzPlayer = new JzvdStd(this);
+        jzPlayer = new SafeJzvdStd(this);
         jzPlayer.setBackgroundColor(Color.BLACK);
         playerBox.addView(jzPlayer, new FrameLayout.LayoutParams(-1, -1));
 
