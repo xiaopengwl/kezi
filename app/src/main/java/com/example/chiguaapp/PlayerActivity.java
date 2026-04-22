@@ -19,6 +19,9 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import cn.jzvd.Jzvd;
+import cn.jzvd.JzvdStd;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -40,7 +43,7 @@ import java.util.regex.Pattern;
 public class PlayerActivity extends Activity {
     private LinearLayout root;
     private FrameLayout playerBox;
-    private WebView playerWeb;
+    private JzvdStd jzPlayer;
     private WebView sniffWeb;
     private ProgressBar loading;
     private TextView titleView;
@@ -55,7 +58,7 @@ public class PlayerActivity extends Activity {
     private String input;
     private String playUrl;
     private boolean sniffing = false;
-    private boolean artReady = false;
+    private boolean playerReady = false;
 
     private final ArrayList<String> episodeNames = new ArrayList<>();
     private final ArrayList<String> episodeInputs = new ArrayList<>();
@@ -76,7 +79,7 @@ public class PlayerActivity extends Activity {
 
     private final Handler handler = new Handler();
     private final Runnable hideState = () -> {
-        if (stateView != null && artReady) {
+        if (stateView != null && playerReady) {
             stateView.animate().alpha(0.35f).setDuration(220).start();
         }
     };
@@ -170,7 +173,7 @@ public class PlayerActivity extends Activity {
         navText.addView(lineView, new LinearLayout.LayoutParams(-1, 0, 1));
 
         TextView sourceTag = new TextView(this);
-        sourceTag.setText("奈飞 / 哔哩播放器");
+        sourceTag.setText("JZVideo 原生播放器");
         sourceTag.setTextColor(Color.parseColor("#FFE6EA"));
         sourceTag.setTextSize(11);
         sourceTag.setTypeface(Typeface.DEFAULT_BOLD);
@@ -183,8 +186,9 @@ public class PlayerActivity extends Activity {
         playerBox.setBackground(cardBg("#05070B", "#151B2A", 0));
         page.addView(playerBox, new LinearLayout.LayoutParams(-1, dp(232)));
 
-        playerWeb = createPlayerWebView();
-        playerBox.addView(playerWeb, new FrameLayout.LayoutParams(-1, -1));
+        jzPlayer = new JzvdStd(this);
+        jzPlayer.setBackgroundColor(Color.BLACK);
+        playerBox.addView(jzPlayer, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.VERTICAL);
@@ -219,14 +223,14 @@ public class PlayerActivity extends Activity {
         root.addView(heroCard, new LinearLayout.LayoutParams(-1, -2));
 
         TextView section = new TextView(this);
-        section.setText("沉浸式播放");
+        section.setText("JZVideo 原生播放");
         section.setTextColor(Color.WHITE);
         section.setTextSize(18);
         section.setTypeface(Typeface.DEFAULT_BOLD);
         heroCard.addView(section);
 
         TextView tip = new TextView(this);
-        tip.setText("保留 ArtPlayer 全屏沉浸播放，顶部信息像奈飞，底部选集像哔哩，继续保持网页嗅探与线路兼容。 ");
+        tip.setText("播放层已切换为 JZVideo + ExoPlayer：解析/嗅探继续负责拿真实 m3u8/mp4，原生播放器负责播放、进度、全屏和横竖屏。 ");
         tip.setTextColor(Color.parseColor("#C9D4F4"));
         tip.setTextSize(13);
         tip.setPadding(0, dp(10), 0, 0);
@@ -429,7 +433,7 @@ public class PlayerActivity extends Activity {
 
     private void resolveAndPlay() {
         releaseSniffer();
-        artReady = false;
+        playerReady = false;
         playUrl = null;
         showState("正在解析播放地址…", true, 1f);
 
@@ -478,16 +482,37 @@ public class PlayerActivity extends Activity {
             startSniff(playUrl, "解析结果不是直链，正在按规则网页嗅探…");
             return;
         }
-        loadArtPlayer(playUrl);
+        loadJzvdPlayer(playUrl);
     }
 
-    private void loadArtPlayer(String mediaUrl) {
+    private void loadJzvdPlayer(String mediaUrl) {
         sniffing = false;
         releaseSniffer();
         playUrl = mediaUrl;
-        artReady = false;
-        showState("播放器加载中…", true, 1f);
-        playerWeb.loadDataWithBaseURL("https://artplayer.org/", buildPlayerHtml(mediaUrl), "text/html", "utf-8", null);
+        playerReady = false;
+        showState("JZVideo 播放器加载中…", true, 1f);
+        if (jzPlayer == null) {
+            showError("播放器初始化失败");
+            return;
+        }
+        JZMediaExoMedia3.setDefaultHeaders("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36", bestReferer());
+        try {
+            Jzvd.releaseAllVideos();
+            jzPlayer.setUp(mediaUrl, title, Jzvd.SCREEN_NORMAL, JZMediaExoMedia3.class);
+            jzPlayer.startVideo();
+            playerReady = true;
+            showState("正在播放", false, 1f);
+            handler.postDelayed(hideState, 1200);
+        } catch (Exception e) {
+            showError("播放失败：" + e.getMessage());
+        }
+    }
+
+    private String bestReferer() {
+        if (sniffCurrentReferer != null && sniffCurrentReferer.startsWith("http")) return sniffCurrentReferer;
+        if (sniffCurrentUrl != null && sniffCurrentUrl.startsWith("http")) return sniffCurrentUrl;
+        if (source != null && source.host != null && source.host.startsWith("http")) return source.host;
+        return "";
     }
 
     private void startSniff(String pageUrl, String message) {
@@ -590,7 +615,7 @@ public class PlayerActivity extends Activity {
                 if (!sniffing) return;
                 sniffing = false;
                 showState("已捕获真实视频地址，正在播放…", true, 1f);
-                loadArtPlayer(normalized);
+                loadJzvdPlayer(normalized);
             });
             return;
         }
@@ -755,7 +780,7 @@ public class PlayerActivity extends Activity {
     private void showError(String text) {
         sniffing = false;
         releaseSniffer();
-        artReady = false;
+        playerReady = false;
         showState(text, false, 1f);
     }
 
@@ -824,15 +849,21 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (playerWeb != null) playerWeb.onResume();
+        Jzvd.goOnPlayOnResume();
         if (sniffWeb != null) sniffWeb.onResume();
     }
 
     @Override
     protected void onPause() {
-        if (playerWeb != null) playerWeb.onPause();
+        Jzvd.goOnPlayOnPause();
         if (sniffWeb != null) sniffWeb.onPause();
         super.onPause();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (Jzvd.backPress()) return;
+        super.onBackPressed();
     }
 
     @Override
@@ -840,14 +871,7 @@ public class PlayerActivity extends Activity {
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         handler.removeCallbacksAndMessages(null);
         releaseSniffer();
-        if (playerWeb != null) {
-            try {
-                playerWeb.stopLoading();
-                playerWeb.loadUrl("about:blank");
-                playerWeb.destroy();
-            } catch (Exception ignored) {}
-            playerWeb = null;
-        }
+        Jzvd.releaseAllVideos();
         super.onDestroy();
     }
 
@@ -855,7 +879,7 @@ public class PlayerActivity extends Activity {
         @JavascriptInterface
         public void onReady() {
             runOnUiThread(() -> {
-                artReady = true;
+                playerReady = true;
                 showState("正在播放", false, 1f);
                 handler.postDelayed(hideState, 1200);
             });
