@@ -23,6 +23,7 @@ import android.widget.Toast;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class DetailActivity extends Activity {
     String url, title, img;
@@ -281,12 +282,71 @@ public class DetailActivity extends Activity {
         }
         if (pic != null && pic.startsWith("http")) loadImage(pic, poster);
         descTv.setText(content != null && content.trim().length() > 0 ? content.trim() : "暂无简介");
-        plays = ps == null ? new ArrayList<>() : ps;
+        plays = sanitizePlayItems(ps == null ? new ArrayList<>() : ps);
         if (plays.isEmpty() && url != null && url.length() > 0) {
             plays.add(new PlayItem("网页嗅探", "嗅探播放", url));
         }
-        statTv.setText("共 " + plays.size() + " 个播放入口");
+        boolean sniffFallback = plays.size() == 1
+                && "网页嗅探".equals(plays.get(0).source)
+                && "嗅探播放".equals(plays.get(0).name);
+        statTv.setText(sniffFallback
+                ? "详情页已回退为原网页嗅探播放入口"
+                : "共 " + plays.size() + " 个播放入口");
         buildLineTabs();
+    }
+
+    ArrayList<PlayItem> sanitizePlayItems(ArrayList<PlayItem> raw) {
+        ArrayList<PlayItem> out = new ArrayList<>();
+        if (raw == null) return out;
+        for (PlayItem p : raw) {
+            if (p == null) continue;
+            String input = p.input == null ? "" : p.input.trim();
+            String name = p.name == null ? "" : p.name.trim();
+            String src = p.source == null ? "默认线路" : p.source.trim();
+            if (input.length() == 0) continue;
+            out.add(new PlayItem(src.length() == 0 ? "默认线路" : src, name, input));
+        }
+        if (out.isEmpty()) return out;
+        if (looksLikeBadDetailResult(out)) {
+            ArrayList<PlayItem> fallback = new ArrayList<>();
+            if (url != null && url.trim().length() > 0) {
+                fallback.add(new PlayItem("网页嗅探", "嗅探播放", url.trim()));
+            }
+            return fallback;
+        }
+        return out;
+    }
+
+    boolean looksLikeBadDetailResult(ArrayList<PlayItem> items) {
+        if (items == null || items.isEmpty()) return false;
+        int navNameHits = 0;
+        int sameHostPageHits = 0;
+        int suspiciousLineHits = 0;
+        String host = source == null || source.host == null ? "" : source.host.toLowerCase(Locale.ROOT);
+        for (PlayItem item : items) {
+            String name = item.name == null ? "" : item.name.trim().toLowerCase(Locale.ROOT);
+            String line = item.source == null ? "" : item.source.trim().toLowerCase(Locale.ROOT);
+            String input = item.input == null ? "" : item.input.trim().toLowerCase(Locale.ROOT);
+            if (name.equals("首页") || name.equals("电影") || name.equals("电视剧") || name.equals("动漫")
+                    || name.equals("综艺") || name.equals("片单") || name.equals("影片下载")
+                    || name.equals("下载") || name.equals("排行") || name.equals("最新") || name.equals("推荐")) {
+                navNameHits++;
+            }
+            if (line.equals("首页") || line.equals("home") || line.equals("导航") || line.equals("菜单")) {
+                suspiciousLineHits++;
+            }
+            if (host.length() > 0 && input.startsWith(host)
+                    && !input.contains("@@")
+                    && !input.contains("m3u8")
+                    && !input.contains("mp4")
+                    && (input.contains("/category/") || input.contains("/tag/") || input.contains("/page/")
+                    || input.endsWith("/") || input.equals(host) || input.equals(host + "/"))) {
+                sameHostPageHits++;
+            }
+        }
+        return navNameHits >= Math.max(2, items.size() / 2)
+                || suspiciousLineHits >= Math.max(1, items.size() / 2)
+                || sameHostPageHits == items.size();
     }
 
     ArrayList<String> lines() {
