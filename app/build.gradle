@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 1
-        versionName '2.9.4-artplayer-mobile'
+        versionName '2.9.5-fullscreen-fix'
     }
 
     buildTypes {
