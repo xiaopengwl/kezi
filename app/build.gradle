@@ -11,7 +11,7 @@ android {
         minSdk 23
         targetSdk 35
         versionCode 1
-        versionName '2.4-media3-exoplayer'
+        versionName '2.5-media3-gesture-fullscreen'
     }
 
     buildTypes {
