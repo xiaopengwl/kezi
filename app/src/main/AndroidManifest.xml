@@ -5,8 +5,10 @@
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme"
-        android:label="晓鹏影视">
-        <activity android:name=".PlayerActivity" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" />
+        android:label="晓鹏影视"
+        android:icon="@drawable/ic_launcher"
+        android:roundIcon="@drawable/ic_launcher">
+        <activity android:name=".PlayerActivity" android:screenOrientation="fullSensor" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".DetailActivity" />
         <activity android:name=".SourceManagerActivity" />
         <activity android:name=".MainActivity" android:exported="true">
