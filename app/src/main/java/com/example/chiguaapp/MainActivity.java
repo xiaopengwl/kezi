@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
         hero.setBackground(heroBg);
         LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.HORIZONTAL); top.setGravity(Gravity.CENTER_VERTICAL);
         TextView logo = tv("晓鹏影视",28,Color.WHITE,Typeface.BOLD); top.addView(logo,new LinearLayout.LayoutParams(0,-2,1));
+        TextView styleTag = tv("ZyFun 风格",12,Color.parseColor("#B8FFEA"),Typeface.BOLD); styleTag.setGravity(Gravity.CENTER); styleTag.setPadding(dp(10),0,dp(10),0); styleTag.setBackground(strokeBg(Color.parseColor("#203344"),1,"#4DD9C0",18)); LinearLayout.LayoutParams stp=new LinearLayout.LayoutParams(-2,dp(34)); stp.rightMargin=dp(8); top.addView(styleTag,stp);
         sourceBtn = new Button(this); sourceBtn.setText("源管理"); sourceBtn.setTextColor(Color.WHITE); sourceBtn.setBackground(strokeBg(Color.parseColor("#243053"),1,"#6B7CFF",22)); top.addView(sourceBtn,new LinearLayout.LayoutParams(dp(96),dp(42)));
         hero.addView(top);
         subTitle = tv("当前源："+source.title,13,Color.parseColor("#B9C2D9"),Typeface.NORMAL); subTitle.setPadding(0,dp(8),0,0); hero.addView(subTitle);
@@ -77,6 +78,7 @@ public class MainActivity extends Activity {
         sourceBtn.setOnClickListener(v -> startActivityForResult(new Intent(this, SourceManagerActivity.class), 9));
         listView.setOnItemClickListener((p,v,pos,id) -> {
             VideoItem it = items.get(pos);
+            if(it.url==null || it.url.trim().length()==0){ Toast.makeText(this,"这个条目没有详情地址，换一个源或分类试试",Toast.LENGTH_SHORT).show(); return; }
             Intent in = new Intent(this, DetailActivity.class);
             in.putExtra("url", it.url); in.putExtra("title", it.title); in.putExtra("img", it.img); startActivity(in);
         });
