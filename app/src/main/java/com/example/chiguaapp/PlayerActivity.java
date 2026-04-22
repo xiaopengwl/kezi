@@ -22,6 +22,11 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
@@ -55,6 +60,9 @@ public class PlayerActivity extends Activity {
     private SourceConfig source;
     private DrpyEngine engine;
     private ExoPlayer player;
+    private WebView sniffWeb;
+    private boolean sniffing;
+    private boolean sniffTried;
     private AudioManager audioManager;
     private String title;
     private String line;
@@ -285,6 +293,8 @@ public class PlayerActivity extends Activity {
         releasePlayer();
         resolved = false;
         playUrl = null;
+        sniffing = false;
+        sniffTried = false;
         loading.setVisibility(View.VISIBLE);
         stateView.setVisibility(View.VISIBLE);
         stateView.setAlpha(1f);
@@ -330,6 +340,10 @@ public class PlayerActivity extends Activity {
             showError("未获取到可播放地址");
             return;
         }
+        if (!looksLikeMedia(playUrl)) {
+            startSniff(playUrl, "解析结果不是直链，启动网页嗅探…");
+            return;
+        }
 
         DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
         MediaItem mediaItem = buildMediaItem(playUrl);
@@ -369,8 +383,84 @@ public class PlayerActivity extends Activity {
             }
 
             @Override public void onPlayerError(PlaybackException error) {
-                showError("播放失败：" + error.getMessage());
+                if (!sniffTried) {
+                    startSniff(playUrl != null && playUrl.length() > 0 ? playUrl : input, "直链播放失败，自动切换网页嗅探…");
+                } else {
+                    showError("播放失败：" + error.getMessage());
+                }
             }
+        });
+    }
+
+    private boolean looksLikeMedia(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
+        return u.contains(".m3u8") || u.contains(".mp4") || u.contains(".flv") || u.contains(".ts?") || u.contains("/m3u8") || u.contains("video/tos") || u.contains("mime=video");
+    }
+
+    private boolean shouldSniffUrl(String url) {
+        if (url == null || url.length() == 0) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
+        if (u.contains(".jpg") || u.contains(".jpeg") || u.contains(".png") || u.contains(".gif") || u.contains(".webp") || u.contains(".css") || u.contains(".js")) return false;
+        return looksLikeMedia(u) || u.contains("m3u8") || u.contains(".mp4") || u.contains(".flv");
+    }
+
+    private void startSniff(String pageUrl, String message) {
+        if (pageUrl == null || pageUrl.trim().length() == 0) {
+            showError("没有可嗅探的页面地址");
+            return;
+        }
+        sniffTried = true;
+        sniffing = true;
+        releasePlayerOnly();
+        releaseSniffer();
+        playUrl = pageUrl.trim();
+        loading.setVisibility(View.VISIBLE);
+        stateView.setVisibility(View.VISIBLE);
+        stateView.setAlpha(1f);
+        stateView.setText(message + "\n正在加载页面并捕获 m3u8 / mp4…");
+        showBarsTemporarily();
+
+        sniffWeb = new WebView(this);
+        sniffWeb.setVisibility(View.INVISIBLE);
+        WebSettings ws = sniffWeb.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setMediaPlaybackRequiresUserGesture(false);
+        ws.setUserAgentString("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
+        sniffWeb.setWebViewClient(new WebViewClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (request != null && request.getUrl() != null) captureSniff(request.getUrl().toString());
+                return super.shouldInterceptRequest(view, request);
+            }
+            @Override public void onLoadResource(WebView view, String url) {
+                captureSniff(url);
+                super.onLoadResource(view, url);
+            }
+            @Override public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (sniffing) {
+                    stateView.setText("嗅探中… 如一直无响应，可点外部播放或返回换线路");
+                }
+            }
+        });
+        root.addView(sniffWeb, new FrameLayout.LayoutParams(1, 1, Gravity.BOTTOM | Gravity.RIGHT));
+        sniffWeb.loadUrl(playUrl);
+        handler.postDelayed(() -> {
+            if (sniffing) showError("嗅探超时：没有捕获到 m3u8/mp4，可返回详情页换线路");
+        }, 18000);
+    }
+
+    private void captureSniff(String url) {
+        if (!sniffing || !shouldSniffUrl(url)) return;
+        runOnUiThread(() -> {
+            if (!sniffing) return;
+            sniffing = false;
+            releaseSniffer();
+            stateView.setText("已嗅探到播放地址，正在启动 Media3…");
+            startPlayer(url);
         });
     }
 
@@ -568,10 +658,28 @@ public class PlayerActivity extends Activity {
     private void releasePlayer() {
         handler.removeCallbacks(hideBars);
         handler.removeCallbacks(hideGestureTip);
+        sniffing = false;
+        releasePlayerOnly();
+        releaseSniffer();
+    }
+
+    private void releasePlayerOnly() {
         if (playerView != null) playerView.setPlayer(null);
         if (player != null) {
             player.release();
             player = null;
+        }
+    }
+
+    private void releaseSniffer() {
+        if (sniffWeb != null) {
+            try {
+                if (root != null) root.removeView(sniffWeb);
+                sniffWeb.stopLoading();
+                sniffWeb.loadUrl("about:blank");
+                sniffWeb.destroy();
+            } catch (Exception ignored) {}
+            sniffWeb = null;
         }
     }
 
