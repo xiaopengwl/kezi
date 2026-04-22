@@ -1,125 +1,68 @@
 package com.example.chiguaapp;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.ActivityInfo;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.media.AudioManager;
-import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Gravity;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.Window;
+import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
-import androidx.media3.common.MediaItem;
-import androidx.media3.common.MimeTypes;
-import androidx.media3.common.PlaybackException;
-import androidx.media3.common.Player;
-import androidx.media3.datasource.DefaultDataSource;
-import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.hls.HlsMediaSource;
-import androidx.media3.exoplayer.source.MediaSource;
-import androidx.media3.exoplayer.source.ProgressiveMediaSource;
-import androidx.media3.ui.PlayerView;
-
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class PlayerActivity extends Activity {
-    private FrameLayout root;
-    private PlayerView playerView;
-    private View gestureLayer;
-    private LinearLayout topBar;
-    private TextView titleView;
-    private TextView stateView;
-    private TextView gestureView;
+    private LinearLayout root;
+    private FrameLayout playerBox;
+    private WebView playerWeb;
+    private WebView sniffWeb;
     private ProgressBar loading;
-    private TextView retryBtn;
-    private TextView externalBtn;
-    private TextView fullscreenBtn;
-    private TextView orientationBtn;
-    private LinearLayout bottomBar;
-    private boolean portraitMode = false;
+    private TextView titleView;
+    private TextView lineView;
+    private TextView stateView;
+    private LinearLayout episodeWrap;
 
     private SourceConfig source;
     private DrpyEngine engine;
-    private ExoPlayer player;
-    private WebView sniffWeb;
-    private boolean sniffing;
-    private boolean sniffTried;
-    private AudioManager audioManager;
     private String title;
     private String line;
     private String input;
     private String playUrl;
-    private boolean resolved;
+    private boolean sniffing = false;
+    private boolean artReady = false;
+
+    private ArrayList<String> episodeNames = new ArrayList<>();
+    private ArrayList<String> episodeInputs = new ArrayList<>();
+    private int currentIndex = 0;
+    private String seriesTitle = "晓鹏影视";
+
     private final Handler handler = new Handler();
-
-    private static final int GESTURE_NONE = 0;
-    private static final int GESTURE_SEEK = 1;
-    private static final int GESTURE_VOLUME = 2;
-    private static final int GESTURE_BRIGHTNESS = 3;
-
-    private int gestureMode = GESTURE_NONE;
-    private float downX;
-    private float downY;
-    private long seekStartPosition;
-    private long seekPreviewPosition;
-    private int startVolume;
-    private int maxVolume;
-    private float startBrightness = -1f;
-    private boolean gestureLocked;
-
-    private final Runnable hideBars = new Runnable() {
-        @Override public void run() {
-            if (topBar != null && resolved) {
-                topBar.animate().alpha(0f).setDuration(220).withEndAction(() -> topBar.setVisibility(View.GONE)).start();
-            }
-            if (stateView != null && resolved) {
-                stateView.animate().alpha(0f).setDuration(220).withEndAction(() -> stateView.setVisibility(View.GONE)).start();
-            }
-            if (gestureView != null) {
-                gestureView.animate().alpha(0f).setDuration(180).withEndAction(() -> gestureView.setVisibility(View.GONE)).start();
-            }
-            if (bottomBar != null && resolved) {
-                bottomBar.animate().alpha(0f).setDuration(220).withEndAction(() -> bottomBar.setVisibility(View.GONE)).start();
-            }
-            if (playerView != null) playerView.hideController();
-            immersive();
+    private final Runnable hideState = () -> {
+        if (stateView != null && artReady) {
+            stateView.animate().alpha(0.35f).setDuration(220).start();
         }
     };
 
-    private final Runnable hideGestureTip = new Runnable() {
-        @Override public void run() {
-            if (gestureView != null) {
-                gestureView.animate().alpha(0f).setDuration(180).withEndAction(() -> gestureView.setVisibility(View.GONE)).start();
-            }
-        }
-    };
-
-    @Override protected void onCreate(Bundle savedInstanceState) {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        keepAwake(true);
-        immersive();
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         input = getIntent().getStringExtra("input");
         if (input == null) input = getIntent().getStringExtra("url");
@@ -128,182 +71,213 @@ public class PlayerActivity extends Activity {
         if (title == null || title.trim().length() == 0) title = "晓鹏影视";
         line = getIntent().getStringExtra("line");
         if (line == null || line.trim().length() == 0) line = "默认线路";
+        seriesTitle = getIntent().getStringExtra("series_title");
+        if (seriesTitle == null || seriesTitle.trim().length() == 0) {
+            int split = title.indexOf(" · ");
+            seriesTitle = split > 0 ? title.substring(0, split) : title;
+        }
+        ArrayList<String> names = getIntent().getStringArrayListExtra("episode_names");
+        ArrayList<String> inputs = getIntent().getStringArrayListExtra("episode_inputs");
+        if (names != null && inputs != null) {
+            int n = Math.min(names.size(), inputs.size());
+            for (int i = 0; i < n; i++) {
+                episodeNames.add(names.get(i));
+                episodeInputs.add(inputs.get(i));
+            }
+        }
+        currentIndex = getIntent().getIntExtra("episode_index", 0);
+        if (currentIndex < 0) currentIndex = 0;
+        if (episodeInputs.isEmpty()) {
+            episodeNames.add("播放");
+            episodeInputs.add(input);
+            currentIndex = 0;
+        } else if (currentIndex >= episodeInputs.size()) {
+            currentIndex = 0;
+        }
+        if (input.trim().length() == 0 && !episodeInputs.isEmpty()) input = episodeInputs.get(currentIndex);
 
         source = SourceConfig.load(this);
         Scraper.useSource(source);
         engine = new DrpyEngine(this, source);
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        if (audioManager != null) {
-            maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        } else {
-            maxVolume = 15;
-        }
 
         buildUi();
+        updateHeader();
+        buildEpisodeButtons();
         resolveAndPlay();
     }
 
     private void buildUi() {
-        root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(Color.parseColor("#090B10"));
 
-        playerView = new PlayerView(this);
-        playerView.setUseController(true);
-        playerView.setControllerAutoShow(true);
-        playerView.setControllerHideOnTouch(false);
-        playerView.setKeepContentOnPlayerReset(true);
-        playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER);
-        playerView.setShutterBackgroundColor(Color.BLACK);
-        root.addView(playerView, new FrameLayout.LayoutParams(-1, -1));
+        root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(14), dp(14), dp(14), dp(22));
+        scroll.addView(root, new ScrollView.LayoutParams(-1, -1));
 
-        gestureLayer = new View(this);
-        gestureLayer.setBackgroundColor(Color.TRANSPARENT);
-        gestureLayer.setClickable(true);
-        gestureLayer.setOnTouchListener((v, event) -> handleGesture(event));
-        root.addView(gestureLayer, new FrameLayout.LayoutParams(-1, -1));
+        playerBox = new FrameLayout(this);
+        playerBox.setBackground(cardBg("#0E1118", "#26324A", 22));
+        LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, dp(220));
+        root.addView(playerBox, playerLp);
 
-        topBar = new LinearLayout(this);
-        topBar.setOrientation(LinearLayout.HORIZONTAL);
-        topBar.setGravity(Gravity.CENTER_VERTICAL);
-        topBar.setPadding(dp(12), dp(8), dp(12), dp(8));
-        topBar.setBackground(glassBg("#D40A1022", "#3A466C", 0));
+        playerWeb = createPlayerWebView();
+        playerBox.addView(playerWeb, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView back = pill("返回", "#20284A");
-        back.setOnClickListener(v -> finish());
-        topBar.addView(back, new LinearLayout.LayoutParams(-2, dp(36)));
+        LinearLayout overlay = new LinearLayout(this);
+        overlay.setOrientation(LinearLayout.VERTICAL);
+        overlay.setGravity(Gravity.CENTER);
+        overlay.setPadding(dp(18), dp(18), dp(18), dp(18));
+        playerBox.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
 
-        titleView = new TextView(this);
-        titleView.setText(title + "  ·  " + line);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTextSize(14);
-        titleView.setSingleLine(true);
-        titleView.setPadding(dp(12), 0, dp(12), 0);
-        topBar.addView(titleView, new LinearLayout.LayoutParams(0, -2, 1));
-
-        retryBtn = pill("重试", "#24315F");
-        retryBtn.setOnClickListener(v -> resolveAndPlay());
-        topBar.addView(retryBtn, new LinearLayout.LayoutParams(-2, dp(36)));
-
-        externalBtn = pill("外部", "#6B7CFF");
-        externalBtn.setOnClickListener(v -> openExternal());
-        LinearLayout.LayoutParams ep = new LinearLayout.LayoutParams(-2, dp(36));
-        ep.leftMargin = dp(8);
-        topBar.addView(externalBtn, ep);
-
-        fullscreenBtn = pill("沉浸", "#0E8F6A");
-        fullscreenBtn.setOnClickListener(v -> forceFullscreen());
-        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-2, dp(36));
-        fp.leftMargin = dp(8);
-        topBar.addView(fullscreenBtn, fp);
-
-        orientationBtn = pill("竖屏", "#B45309");
-        orientationBtn.setOnClickListener(v -> toggleOrientation());
-        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(-2, dp(36));
-        op.leftMargin = dp(8);
-        topBar.addView(orientationBtn, op);
-
-        root.addView(topBar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
-
-        LinearLayout center = new LinearLayout(this);
-        center.setOrientation(LinearLayout.VERTICAL);
-        center.setGravity(Gravity.CENTER);
         loading = new ProgressBar(this);
-        center.addView(loading, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        overlay.addView(loading, new LinearLayout.LayoutParams(dp(38), dp(38)));
+
         stateView = new TextView(this);
-        stateView.setText("正在解析播放地址…");
-        stateView.setTextColor(Color.parseColor("#D9E2FF"));
+        stateView.setTextColor(Color.parseColor("#DDE5FF"));
         stateView.setTextSize(14);
         stateView.setGravity(Gravity.CENTER);
-        stateView.setPadding(dp(16), dp(12), dp(16), dp(12));
-        center.addView(stateView, new LinearLayout.LayoutParams(-2, -2));
-        root.addView(center, new FrameLayout.LayoutParams(-1, -2, Gravity.CENTER));
+        stateView.setPadding(dp(14), dp(14), dp(14), 0);
+        stateView.setText("正在解析播放地址…");
+        overlay.addView(stateView, new LinearLayout.LayoutParams(-2, -2));
 
-        gestureView = new TextView(this);
-        gestureView.setTextColor(Color.WHITE);
-        gestureView.setTextSize(18);
-        gestureView.setGravity(Gravity.CENTER);
-        gestureView.setPadding(dp(20), dp(14), dp(20), dp(14));
-        GradientDrawable tipBg = new GradientDrawable();
-        tipBg.setColor(Color.parseColor("#CC101626"));
-        tipBg.setCornerRadius(dp(16));
-        gestureView.setBackground(tipBg);
-        gestureView.setVisibility(View.GONE);
-        root.addView(gestureView, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
+        LinearLayout infoCard = new LinearLayout(this);
+        infoCard.setOrientation(LinearLayout.VERTICAL);
+        infoCard.setPadding(dp(16), dp(16), dp(16), dp(16));
+        infoCard.setBackground(cardBg("#101521", "#222D42", 18));
+        LinearLayout.LayoutParams infoLp = new LinearLayout.LayoutParams(-1, -2);
+        infoLp.topMargin = dp(14);
+        root.addView(infoCard, infoLp);
 
-        bottomBar = new LinearLayout(this);
-        bottomBar.setOrientation(LinearLayout.VERTICAL);
-        bottomBar.setPadding(dp(16), dp(12), dp(16), dp(12));
-        bottomBar.setBackground(glassBg("#C80A1022", "#33405E", 18));
-        TextView hint1 = new TextView(this);
-        hint1.setText("手势控制 · 左侧音量  右侧亮度  左右快进快退");
-        hint1.setTextColor(Color.parseColor("#E8EDFF"));
-        hint1.setTextSize(13);
-        bottomBar.addView(hint1);
-        TextView hint2 = new TextView(this);
-        hint2.setText("线路：" + line + "    ·    当前源：" + source.title + "    ·    可点右上角切换横/竖屏");
-        hint2.setTextColor(Color.parseColor("#9EADDD"));
-        hint2.setTextSize(11);
-        hint2.setPadding(0, dp(4), 0, 0);
-        bottomBar.addView(hint2);
-        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
-        bp.setMargins(dp(14), 0, dp(14), dp(18));
-        root.addView(bottomBar, bp);
+        titleView = new TextView(this);
+        titleView.setTextColor(Color.WHITE);
+        titleView.setTextSize(17);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        infoCard.addView(titleView);
 
-        root.setOnClickListener(v -> showBarsTemporarily());
-        playerView.setOnClickListener(v -> showBarsTemporarily());
+        lineView = new TextView(this);
+        lineView.setTextColor(Color.parseColor("#9EAFD6"));
+        lineView.setTextSize(12);
+        lineView.setPadding(0, dp(8), 0, 0);
+        infoCard.addView(lineView);
 
-        setContentView(root);
+        TextView tip = new TextView(this);
+        tip.setText("上面直接播放，下面直接切集。这里只保留最简单结构，不再放全屏、重试、外部、沉浸这些按钮。\n如果不是直链，会自动网页嗅探后再播。");
+        tip.setTextColor(Color.parseColor("#C9D4F4"));
+        tip.setTextSize(13);
+        tip.setPadding(0, dp(14), 0, 0);
+        infoCard.addView(tip);
+
+        TextView epTitle = new TextView(this);
+        epTitle.setText("选集按钮");
+        epTitle.setTextColor(Color.WHITE);
+        epTitle.setTextSize(17);
+        epTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        epTitle.setPadding(dp(2), dp(18), dp(2), 0);
+        root.addView(epTitle);
+
+        LinearLayout epCard = new LinearLayout(this);
+        epCard.setOrientation(LinearLayout.VERTICAL);
+        epCard.setPadding(dp(12), dp(12), dp(12), dp(12));
+        epCard.setBackground(cardBg("#101521", "#23314E", 20));
+        LinearLayout.LayoutParams epCardLp = new LinearLayout.LayoutParams(-1, -2);
+        epCardLp.topMargin = dp(8);
+        root.addView(epCard, epCardLp);
+
+        episodeWrap = new LinearLayout(this);
+        episodeWrap.setOrientation(LinearLayout.VERTICAL);
+        epCard.addView(episodeWrap, new LinearLayout.LayoutParams(-1, -2));
+
+        setContentView(scroll);
     }
 
-    private TextView pill(String text, String bg) {
-        TextView v = new TextView(this);
-        v.setText(text);
-        v.setTextColor(Color.WHITE);
-        v.setTextSize(13);
-        v.setGravity(Gravity.CENTER);
-        v.setPadding(dp(14), 0, dp(14), 0);
-        v.setBackground(glassBg(bg, "#FFFFFF", 18));
-        return v;
+    private void updateHeader() {
+        String episodeName = currentIndex >= 0 && currentIndex < episodeNames.size() ? episodeNames.get(currentIndex) : "播放";
+        titleView.setText(seriesTitle + " · " + episodeName);
+        lineView.setText("线路：" + line + "   ·   源：" + source.title + "   ·   共 " + episodeInputs.size() + " 集");
+        title = seriesTitle + " · " + episodeName;
     }
 
-    private GradientDrawable glassBg(String color, String stroke, int radius) {
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.parseColor(color));
-        g.setCornerRadius(dp(radius));
-        g.setStroke(dp(1), Color.parseColor(stroke));
-        return g;
-    }
-
-    private void toggleOrientation() {
-        portraitMode = !portraitMode;
-        if (portraitMode) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
-            if (orientationBtn != null) orientationBtn.setText("横屏");
-            showGestureTip("已切换竖屏\n适合短剧/竖版视频");
-        } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-            if (orientationBtn != null) orientationBtn.setText("竖屏");
-            showGestureTip("已切换横屏\n适合电影/长视频");
+    private void buildEpisodeButtons() {
+        episodeWrap.removeAllViews();
+        if (episodeInputs.isEmpty()) {
+            TextView empty = new TextView(this);
+            empty.setText("当前没有可切换的选集");
+            empty.setTextColor(Color.parseColor("#8EA0C4"));
+            empty.setTextSize(14);
+            empty.setPadding(dp(4), dp(8), dp(4), dp(8));
+            episodeWrap.addView(empty);
+            return;
         }
-        showBarsTemporarily();
-        handler.postDelayed(hideGestureTip, 900);
+        LinearLayout row = null;
+        int col = 0;
+        for (int i = 0; i < episodeInputs.size(); i++) {
+            if (row == null || col == 3) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
+                if (episodeWrap.getChildCount() > 0) rowLp.topMargin = dp(8);
+                episodeWrap.addView(row, rowLp);
+                col = 0;
+            }
+            final int index = i;
+            String name = episodeNames.get(i) == null || episodeNames.get(i).trim().length() == 0 ? ("第" + (i + 1) + "集") : episodeNames.get(i);
+            TextView ep = new TextView(this);
+            ep.setText(name);
+            ep.setTextSize(13);
+            ep.setTextColor(Color.parseColor(i == currentIndex ? "#FFFFFF" : "#EAF0FF"));
+            ep.setTypeface(Typeface.DEFAULT_BOLD);
+            ep.setGravity(Gravity.CENTER);
+            ep.setSingleLine(true);
+            ep.setPadding(dp(6), dp(12), dp(6), dp(12));
+            ep.setBackground(i == currentIndex ? cardBg("#5568FF", "#7384FF", 16) : cardBg("#151F35", "#31415F", 16));
+            LinearLayout.LayoutParams epLp = new LinearLayout.LayoutParams(0, -2, 1);
+            if (col < 2) epLp.rightMargin = dp(8);
+            row.addView(ep, epLp);
+            ep.setOnClickListener(v -> switchEpisode(index));
+            col++;
+        }
+    }
+
+    private void switchEpisode(int index) {
+        if (index < 0 || index >= episodeInputs.size() || index == currentIndex) return;
+        currentIndex = index;
+        input = episodeInputs.get(index) == null ? "" : episodeInputs.get(index);
+        updateHeader();
+        buildEpisodeButtons();
+        resolveAndPlay();
+    }
+
+    private WebView createPlayerWebView() {
+        WebView web = new WebView(this);
+        WebSettings ws = web.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setMediaPlaybackRequiresUserGesture(false);
+        ws.setAllowFileAccess(false);
+        ws.setAllowContentAccess(false);
+        ws.setUserAgentString("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
+        web.setBackgroundColor(Color.BLACK);
+        web.addJavascriptInterface(new PlayerBridge(), "HermesPlayer");
+        web.setWebChromeClient(new WebChromeClient());
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return false;
+            }
+        });
+        return web;
     }
 
     private void resolveAndPlay() {
-        releasePlayer();
-        resolved = false;
+        releaseSniffer();
+        artReady = false;
         playUrl = null;
-        sniffing = false;
-        sniffTried = false;
-        loading.setVisibility(View.VISIBLE);
-        stateView.setVisibility(View.VISIBLE);
-        stateView.setAlpha(1f);
-        stateView.setText("正在解析播放地址…");
-        showBarsTemporarily();
+        showState("正在解析播放地址…", true, 1f);
 
         if (source.raw != null && source.raw.length() > 0 && source.raw.contains("var rule")) {
             engine.runLazy(input, (u, err) -> {
-                if (err != null && err.length() > 0 && (u == null || u.length() == 0)) {
+                if (err != null && err.length() > 0 && (u == null || u.trim().length() == 0)) {
                     showError("解析失败：" + err);
                 } else {
                     startPlayer(u);
@@ -314,7 +288,8 @@ public class PlayerActivity extends Activity {
 
         new AsyncTask<Void, Void, String>() {
             Exception error;
-            @Override protected String doInBackground(Void... v) {
+            @Override
+            protected String doInBackground(Void... voids) {
                 try {
                     return Scraper.resolvePlay(input);
                 } catch (Exception e) {
@@ -323,8 +298,9 @@ public class PlayerActivity extends Activity {
                 }
             }
 
-            @Override protected void onPostExecute(String u) {
-                if (error != null && (u == null || u.length() == 0)) {
+            @Override
+            protected void onPostExecute(String u) {
+                if (error != null && (u == null || u.trim().length() == 0)) {
                     showError("解析失败：" + error.getMessage());
                 } else {
                     startPlayer(u);
@@ -341,70 +317,19 @@ public class PlayerActivity extends Activity {
             return;
         }
         if (!looksLikeMedia(playUrl)) {
-            startSniff(playUrl, "解析结果不是直链，启动网页嗅探…");
+            startSniff(playUrl, "解析结果不是直链，正在网页嗅探…");
             return;
         }
-
-        DefaultDataSource.Factory dataSourceFactory = new DefaultDataSource.Factory(this);
-        MediaItem mediaItem = buildMediaItem(playUrl);
-        MediaSource mediaSource = buildMediaSource(dataSourceFactory, mediaItem, playUrl);
-
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
-        player.setMediaSource(mediaSource);
-        player.setPlayWhenReady(true);
-        player.prepare();
-        player.addListener(new Player.Listener() {
-            @Override public void onPlaybackStateChanged(int state) {
-                if (state == Player.STATE_BUFFERING) {
-                    loading.setVisibility(View.VISIBLE);
-                    stateView.setVisibility(View.VISIBLE);
-                    stateView.setAlpha(1f);
-                    stateView.setText("缓冲中… 左侧上下调音量，右侧上下调亮度，左右滑动调进度");
-                } else if (state == Player.STATE_READY) {
-                    resolved = true;
-                    loading.setVisibility(View.GONE);
-                    stateView.setVisibility(View.VISIBLE);
-                    stateView.setAlpha(1f);
-                    stateView.setText("正在播放 · 点按唤出控制栏 · 右上角可切竖屏 · 左音量 / 右亮度 / 左右快进快退");
-                    handler.postDelayed(() -> {
-                        if (stateView != null) {
-                            stateView.animate().alpha(0f).setDuration(220).withEndAction(() -> stateView.setVisibility(View.GONE)).start();
-                        }
-                    }, 1800);
-                    showBarsTemporarily();
-                } else if (state == Player.STATE_ENDED) {
-                    stateView.setVisibility(View.VISIBLE);
-                    stateView.setAlpha(1f);
-                    stateView.setText("播放结束");
-                    topBar.setVisibility(View.VISIBLE);
-                    topBar.setAlpha(1f);
-                }
-            }
-
-            @Override public void onPlayerError(PlaybackException error) {
-                if (!sniffTried) {
-                    startSniff(playUrl != null && playUrl.length() > 0 ? playUrl : input, "直链播放失败，自动切换网页嗅探…");
-                } else {
-                    showError("播放失败：" + error.getMessage());
-                }
-            }
-        });
+        loadArtPlayer(playUrl);
     }
 
-    private boolean looksLikeMedia(String url) {
-        if (url == null) return false;
-        String u = url.toLowerCase(Locale.ROOT);
-        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
-        return u.contains(".m3u8") || u.contains(".mp4") || u.contains(".flv") || u.contains(".ts?") || u.contains("/m3u8") || u.contains("video/tos") || u.contains("mime=video");
-    }
-
-    private boolean shouldSniffUrl(String url) {
-        if (url == null || url.length() == 0) return false;
-        String u = url.toLowerCase(Locale.ROOT);
-        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
-        if (u.contains(".jpg") || u.contains(".jpeg") || u.contains(".png") || u.contains(".gif") || u.contains(".webp") || u.contains(".css") || u.contains(".js")) return false;
-        return looksLikeMedia(u) || u.contains("m3u8") || u.contains(".mp4") || u.contains(".flv");
+    private void loadArtPlayer(String mediaUrl) {
+        sniffing = false;
+        releaseSniffer();
+        playUrl = mediaUrl;
+        artReady = false;
+        showState("播放器加载中…", true, 1f);
+        playerWeb.loadDataWithBaseURL("https://artplayer.org/", buildPlayerHtml(mediaUrl), "text/html", "utf-8", null);
     }
 
     private void startSniff(String pageUrl, String message) {
@@ -412,17 +337,9 @@ public class PlayerActivity extends Activity {
             showError("没有可嗅探的页面地址");
             return;
         }
-        sniffTried = true;
         sniffing = true;
-        releasePlayerOnly();
         releaseSniffer();
-        playUrl = pageUrl.trim();
-        loading.setVisibility(View.VISIBLE);
-        stateView.setVisibility(View.VISIBLE);
-        stateView.setAlpha(1f);
-        stateView.setText(message + "\n正在加载页面并捕获 m3u8 / mp4…");
-        showBarsTemporarily();
-
+        showState(message, true, 1f);
         sniffWeb = new WebView(this);
         sniffWeb.setVisibility(View.INVISIBLE);
         WebSettings ws = sniffWeb.getSettings();
@@ -431,25 +348,28 @@ public class PlayerActivity extends Activity {
         ws.setMediaPlaybackRequiresUserGesture(false);
         ws.setUserAgentString("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
         sniffWeb.setWebViewClient(new WebViewClient() {
-            @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 if (request != null && request.getUrl() != null) captureSniff(request.getUrl().toString());
                 return super.shouldInterceptRequest(view, request);
             }
-            @Override public void onLoadResource(WebView view, String url) {
+
+            @Override
+            public void onLoadResource(WebView view, String url) {
                 captureSniff(url);
                 super.onLoadResource(view, url);
             }
-            @Override public void onPageFinished(WebView view, String url) {
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (sniffing) {
-                    stateView.setText("嗅探中… 如一直无响应，可点外部播放或返回换线路");
-                }
+                if (sniffing) showState("嗅探中，正在抓取真实视频地址…", true, 1f);
             }
         });
-        root.addView(sniffWeb, new FrameLayout.LayoutParams(1, 1, Gravity.BOTTOM | Gravity.RIGHT));
-        sniffWeb.loadUrl(playUrl);
+        addContentView(sniffWeb, new ViewGroup.LayoutParams(1, 1));
+        sniffWeb.loadUrl(pageUrl.trim());
         handler.postDelayed(() -> {
-            if (sniffing) showError("嗅探超时：没有捕获到 m3u8/mp4，可返回详情页换线路");
+            if (sniffing) showError("嗅探超时，请换集或换线路再试");
         }, 18000);
     }
 
@@ -458,223 +378,87 @@ public class PlayerActivity extends Activity {
         runOnUiThread(() -> {
             if (!sniffing) return;
             sniffing = false;
-            releaseSniffer();
-            stateView.setText("已嗅探到播放地址，正在启动 Media3…");
-            startPlayer(url);
+            showState("已捕获真实视频地址，正在播放…", true, 1f);
+            loadArtPlayer(url);
         });
     }
 
-    private MediaItem buildMediaItem(String url) {
-        Uri uri = Uri.parse(url);
-        MediaItem.Builder builder = new MediaItem.Builder().setUri(uri).setMediaId(url);
-        String lower = url.toLowerCase();
-        if (lower.contains(".m3u8")) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
-        else if (lower.contains(".mpd")) builder.setMimeType(MimeTypes.APPLICATION_MPD);
-        else if (lower.contains(".mp4")) builder.setMimeType(MimeTypes.VIDEO_MP4);
-        return builder.build();
+    private boolean looksLikeMedia(String url) {
+        if (url == null) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
+        return u.contains(".m3u8") || u.contains(".mp4") || u.contains(".flv") || u.contains(".mkv") || u.contains(".mpd") || u.contains("mime=video") || u.contains("/m3u8");
     }
 
-    private MediaSource buildMediaSource(DefaultDataSource.Factory factory, MediaItem item, String url) {
-        String lower = url.toLowerCase();
-        if (lower.contains(".m3u8")) {
-            return new HlsMediaSource.Factory(factory).createMediaSource(item);
-        }
-        return new ProgressiveMediaSource.Factory(factory).createMediaSource(item);
+    private boolean shouldSniffUrl(String url) {
+        if (url == null || url.trim().length() == 0) return false;
+        String u = url.toLowerCase(Locale.ROOT);
+        if (u.startsWith("blob:") || u.startsWith("data:")) return false;
+        if (u.contains(".jpg") || u.contains(".jpeg") || u.contains(".png") || u.contains(".gif") || u.contains(".webp") || u.contains(".css") || u.contains(".js") || u.contains("favicon")) return false;
+        return looksLikeMedia(u) || u.contains("m3u8") || u.contains(".mp4") || u.contains(".flv");
     }
 
-    private boolean handleGesture(MotionEvent event) {
-        if (event == null) return false;
-        switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                gestureLocked = false;
-                gestureMode = GESTURE_NONE;
-                downX = event.getX();
-                downY = event.getY();
-                seekStartPosition = player != null ? Math.max(player.getCurrentPosition(), 0) : 0;
-                seekPreviewPosition = seekStartPosition;
-                startVolume = audioManager != null ? audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) : 0;
-                startBrightness = currentBrightness();
-                handler.removeCallbacks(hideBars);
-                handler.removeCallbacks(hideGestureTip);
-                return true;
-            case MotionEvent.ACTION_MOVE:
-                float dx = event.getX() - downX;
-                float dy = event.getY() - downY;
-                if (!gestureLocked) {
-                    if (Math.abs(dx) < dp(12) && Math.abs(dy) < dp(12)) return true;
-                    gestureLocked = true;
-                    if (Math.abs(dx) >= Math.abs(dy)) {
-                        gestureMode = GESTURE_SEEK;
-                    } else if (downX < root.getWidth() / 2f) {
-                        gestureMode = GESTURE_VOLUME;
-                    } else {
-                        gestureMode = GESTURE_BRIGHTNESS;
-                    }
-                }
-                if (gestureMode == GESTURE_SEEK) {
-                    updateSeek(dx);
-                } else if (gestureMode == GESTURE_VOLUME) {
-                    updateVolume(dy);
-                } else if (gestureMode == GESTURE_BRIGHTNESS) {
-                    updateBrightness(dy);
-                }
-                return true;
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                finishGesture();
-                if (!gestureLocked) {
-                    showBarsTemporarily();
-                }
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateSeek(float dx) {
-        if (player == null) return;
-        long duration = player.getDuration();
-        if (duration <= 0) duration = 0;
-        long delta = (long) ((dx / Math.max(root.getWidth(), 1)) * 600000L);
-        seekPreviewPosition = seekStartPosition + delta;
-        if (duration > 0) {
-            seekPreviewPosition = Math.max(0, Math.min(duration, seekPreviewPosition));
-        } else {
-            seekPreviewPosition = Math.max(0, seekPreviewPosition);
-        }
-        String direction = delta >= 0 ? "快进" : "快退";
-        showGestureTip(direction + "\n" + formatTime(seekPreviewPosition) + " / " + formatTime(duration));
-    }
-
-    private void updateVolume(float dy) {
-        if (audioManager == null || maxVolume <= 0) return;
-        float percentDelta = (-dy) / Math.max(root.getHeight(), 1);
-        int target = startVolume + Math.round(percentDelta * maxVolume * 1.6f);
-        target = Math.max(0, Math.min(maxVolume, target));
-        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0);
-        int percent = Math.round(target * 100f / maxVolume);
-        showGestureTip("音量\n" + percent + "%");
-    }
-
-    private void updateBrightness(float dy) {
-        WindowManager.LayoutParams lp = getWindow().getAttributes();
-        float base = startBrightness;
-        float percentDelta = (-dy) / Math.max(root.getHeight(), 1);
-        float target = base + percentDelta * 1.2f;
-        if (target < 0.05f) target = 0.05f;
-        if (target > 1f) target = 1f;
-        lp.screenBrightness = target;
-        getWindow().setAttributes(lp);
-        int percent = Math.round(target * 100f);
-        showGestureTip("亮度\n" + percent + "%");
-    }
-
-    private void finishGesture() {
-        if (gestureMode == GESTURE_SEEK && player != null) {
-            player.seekTo(Math.max(0, seekPreviewPosition));
-            showGestureTip("已定位到\n" + formatTime(seekPreviewPosition));
-            handler.postDelayed(hideGestureTip, 700);
-        } else if (gestureMode == GESTURE_VOLUME || gestureMode == GESTURE_BRIGHTNESS) {
-            handler.postDelayed(hideGestureTip, 500);
-        }
-        gestureMode = GESTURE_NONE;
-        gestureLocked = false;
-        showBarsTemporarily();
-    }
-
-    private float currentBrightness() {
-        float b = getWindow().getAttributes().screenBrightness;
-        if (b <= 0f) b = 0.5f;
-        return b;
-    }
-
-    private void showGestureTip(String text) {
-        if (gestureView == null) return;
-        handler.removeCallbacks(hideGestureTip);
-        gestureView.setText(text);
-        gestureView.setVisibility(View.VISIBLE);
-        gestureView.setAlpha(1f);
-    }
-
-    private String formatTime(long ms) {
-        if (ms < 0) ms = 0;
-        long total = ms / 1000;
-        long s = total % 60;
-        long m = (total / 60) % 60;
-        long h = total / 3600;
-        if (h > 0) return String.format(Locale.getDefault(), "%d:%02d:%02d", h, m, s);
-        return String.format(Locale.getDefault(), "%02d:%02d", m, s);
-    }
-
-    private void forceFullscreen() {
-        immersive();
-        if (playerView != null) playerView.hideController();
-        if (topBar != null) {
-            topBar.setVisibility(View.GONE);
-            topBar.setAlpha(0f);
-        }
-        if (stateView != null) {
-            stateView.setVisibility(View.GONE);
-            stateView.setAlpha(0f);
-        }
-        if (gestureView != null) {
-            gestureView.setVisibility(View.GONE);
-            gestureView.setAlpha(0f);
-        }
-        if (bottomBar != null) {
-            bottomBar.setVisibility(View.GONE);
-            bottomBar.setAlpha(0f);
-        }
-    }
-
-    private void showError(String msg) {
-        releasePlayer();
-        loading.setVisibility(View.GONE);
-        resolved = false;
+    private void showState(String text, boolean showLoading, float alpha) {
+        handler.removeCallbacks(hideState);
+        loading.setVisibility(showLoading ? View.VISIBLE : View.GONE);
         stateView.setVisibility(View.VISIBLE);
-        stateView.setAlpha(1f);
-        stateView.setText(msg + "\n可点“重试 / 外部”，或返回详情页切换线路");
-        topBar.setVisibility(View.VISIBLE);
-        topBar.setAlpha(1f);
-        showBarsTemporarily();
+        stateView.setAlpha(alpha);
+        stateView.setText(text);
     }
 
-    private void openExternal() {
-        String u = playUrl != null && playUrl.length() > 0 ? playUrl : input;
-        if (u == null || u.length() == 0) return;
-        try {
-            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(u));
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(i);
-        } catch (Exception e) {
-            new AlertDialog.Builder(this)
-                    .setTitle("无法打开外部播放器")
-                    .setMessage(e.getMessage())
-                    .setPositiveButton("知道了", null)
-                    .show();
-        }
-    }
-
-    private void releasePlayer() {
-        handler.removeCallbacks(hideBars);
-        handler.removeCallbacks(hideGestureTip);
+    private void showError(String text) {
         sniffing = false;
-        releasePlayerOnly();
         releaseSniffer();
+        artReady = false;
+        showState(text, false, 1f);
     }
 
-    private void releasePlayerOnly() {
-        if (playerView != null) playerView.setPlayer(null);
-        if (player != null) {
-            player.release();
-            player = null;
-        }
+    private GradientDrawable cardBg(String color, String stroke, int radiusDp) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(Color.parseColor(color));
+        g.setCornerRadius(dp(radiusDp));
+        g.setStroke(dp(1), Color.parseColor(stroke));
+        return g;
+    }
+
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private String buildPlayerHtml(String mediaUrl) {
+        String safeUrl = jsString(mediaUrl);
+        String safeTitle = jsString(title);
+        return "<!doctype html><html><head><meta charset='utf-8'>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no'>"
+                + "<style>html,body,#player{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;} .art-video-player{background:#000!important;}</style>"
+                + "</head><body><div id='player'></div>"
+                + "<script src='https://cdn.jsdelivr.net/npm/hls.js@latest'></script>"
+                + "<script src='https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js'></script>"
+                + "<script>"
+                + "var url='" + safeUrl + "';"
+                + "var title='" + safeTitle + "';"
+                + "function postReady(){try{HermesPlayer.onReady();}catch(e){}}"
+                + "function postError(msg){try{HermesPlayer.onError(String(msg||''));}catch(e){}}"
+                + "try{var art=new Artplayer({container:'#player',url:url,title:title,autoplay:true,autoSize:true,fullscreen:false,fullscreenWeb:false,pip:false,screenshot:false,setting:true,hotkey:true,playbackRate:true,aspectRatio:true,theme:'#6D7CFF',moreVideoAttr:{crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls();hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});art.on('ready',function(){postReady();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});}catch(e){postError(e&&e.message?e.message:'player init error');}"
+                + "</script></body></html>";
+    }
+
+    private String jsString(String text) {
+        if (text == null) return "";
+        return text.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", " ")
+                .replace("\r", " ");
     }
 
     private void releaseSniffer() {
+        handler.removeCallbacks(hideState);
         if (sniffWeb != null) {
             try {
-                if (root != null) root.removeView(sniffWeb);
+                ViewGroup parent = (ViewGroup) sniffWeb.getParent();
+                if (parent != null) parent.removeView(sniffWeb);
+            } catch (Exception ignored) {}
+            try {
                 sniffWeb.stopLoading();
                 sniffWeb.loadUrl("about:blank");
                 sniffWeb.destroy();
@@ -683,78 +467,49 @@ public class PlayerActivity extends Activity {
         }
     }
 
-    private void showBarsTemporarily() {
-        handler.removeCallbacks(hideBars);
-        if (topBar != null) {
-            topBar.setVisibility(View.VISIBLE);
-            topBar.animate().alpha(1f).setDuration(120).start();
-        }
-        if (stateView != null && (stateView.getText() != null && stateView.getText().length() > 0)) {
-            stateView.setVisibility(View.VISIBLE);
-            stateView.animate().alpha(1f).setDuration(120).start();
-        }
-        if (bottomBar != null) {
-            bottomBar.setVisibility(View.VISIBLE);
-            bottomBar.animate().alpha(1f).setDuration(120).start();
-        }
-        if (playerView != null) playerView.showController();
-        handler.postDelayed(hideBars, resolved ? 3500 : 6000);
-        immersive();
-    }
-
-    private void immersive() {
-        int flags = View.SYSTEM_UI_FLAG_FULLSCREEN |
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-        getWindow().getDecorView().setSystemUiVisibility(flags);
-    }
-
-    private void keepAwake(boolean on) {
-        if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-    }
-
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
-    }
-
-    @Override public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) immersive();
-    }
-
-    @Override protected void onResume() {
+    @Override
+    protected void onResume() {
         super.onResume();
-        immersive();
-        if (playerView != null) playerView.onResume();
-        if (player != null) player.play();
+        if (playerWeb != null) playerWeb.onResume();
+        if (sniffWeb != null) sniffWeb.onResume();
     }
 
-    @Override protected void onPause() {
-        if (player != null) player.pause();
-        if (playerView != null) playerView.onPause();
+    @Override
+    protected void onPause() {
+        if (playerWeb != null) playerWeb.onPause();
+        if (sniffWeb != null) sniffWeb.onPause();
         super.onPause();
     }
 
-    @Override protected void onStop() {
-        if (Build.VERSION.SDK_INT <= 23) releasePlayer();
-        super.onStop();
-    }
-
-    @Override protected void onDestroy() {
-        releasePlayer();
-        keepAwake(false);
+    @Override
+    protected void onDestroy() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        handler.removeCallbacksAndMessages(null);
+        releaseSniffer();
+        if (playerWeb != null) {
+            try {
+                playerWeb.stopLoading();
+                playerWeb.loadUrl("about:blank");
+                playerWeb.destroy();
+            } catch (Exception ignored) {}
+            playerWeb = null;
+        }
         super.onDestroy();
     }
 
-    @Override public void onBackPressed() {
-        if (portraitMode) {
-            toggleOrientation();
-            return;
+    private final class PlayerBridge {
+        @JavascriptInterface
+        public void onReady() {
+            runOnUiThread(() -> {
+                artReady = true;
+                showState("正在播放", false, 1f);
+                handler.postDelayed(hideState, 1200);
+            });
         }
-        finish();
+
+        @JavascriptInterface
+        public void onError(String message) {
+            runOnUiThread(() -> showError("播放失败：" + (message == null ? "未知错误" : message)));
+        }
     }
 }
