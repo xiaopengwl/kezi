@@ -54,7 +54,7 @@ public class JZMediaExoMedia3 extends JZMediaInterface implements Player.Listene
     @Override
     public void prepare() {
         mainHandler.post(() -> {
-            releasePlayerOnly();
+            releasePlayerOnly(false);
             Map<String, String> headers = new HashMap<>();
             headers.put("User-Agent", USER_AGENT);
             if (REFERER != null && REFERER.startsWith("http")) headers.put("Referer", REFERER);
@@ -102,11 +102,11 @@ public class JZMediaExoMedia3 extends JZMediaInterface implements Player.Listene
 
     @Override
     public void release() {
-        mainHandler.post(this::releasePlayerOnly);
+        mainHandler.post(() -> releasePlayerOnly(true));
         JZMediaInterface.SAVED_SURFACE = null;
     }
 
-    private void releasePlayerOnly() {
+    private void releasePlayerOnly(boolean releaseSurfaceToo) {
         if (bufferingCallback != null) mainHandler.removeCallbacks(bufferingCallback);
         bufferingCallback = null;
         if (player != null) {
@@ -114,7 +114,7 @@ public class JZMediaExoMedia3 extends JZMediaInterface implements Player.Listene
             player.release();
             player = null;
         }
-        if (surface != null) {
+        if (releaseSurfaceToo && surface != null) {
             surface.release();
             surface = null;
         }
