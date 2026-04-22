@@ -5,8 +5,8 @@
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/AppTheme"
-        android:label="DRPY源播放器">
-        <activity android:name=".PlayerActivity" android:screenOrientation="portrait" />
+        android:label="晓鹏影视">
+        <activity android:name=".PlayerActivity" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".DetailActivity" />
         <activity android:name=".SourceManagerActivity" />
         <activity android:name=".MainActivity" android:exported="true">
