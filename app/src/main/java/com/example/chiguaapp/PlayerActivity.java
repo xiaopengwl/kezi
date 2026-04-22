@@ -48,6 +48,9 @@ public class PlayerActivity extends Activity {
     private TextView retryBtn;
     private TextView externalBtn;
     private TextView fullscreenBtn;
+    private TextView orientationBtn;
+    private LinearLayout bottomBar;
+    private boolean portraitMode = false;
 
     private SourceConfig source;
     private DrpyEngine engine;
@@ -85,6 +88,9 @@ public class PlayerActivity extends Activity {
             }
             if (gestureView != null) {
                 gestureView.animate().alpha(0f).setDuration(180).withEndAction(() -> gestureView.setVisibility(View.GONE)).start();
+            }
+            if (bottomBar != null && resolved) {
+                bottomBar.animate().alpha(0f).setDuration(220).withEndAction(() -> bottomBar.setVisibility(View.GONE)).start();
             }
             if (playerView != null) playerView.hideController();
             immersive();
@@ -152,7 +158,7 @@ public class PlayerActivity extends Activity {
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setPadding(dp(12), dp(8), dp(12), dp(8));
-        topBar.setBackgroundColor(Color.parseColor("#CC050814"));
+        topBar.setBackground(glassBg("#D40A1022", "#3A466C", 0));
 
         TextView back = pill("返回", "#20284A");
         back.setOnClickListener(v -> finish());
@@ -176,11 +182,17 @@ public class PlayerActivity extends Activity {
         ep.leftMargin = dp(8);
         topBar.addView(externalBtn, ep);
 
-        fullscreenBtn = pill("全屏", "#0E8F6A");
+        fullscreenBtn = pill("沉浸", "#0E8F6A");
         fullscreenBtn.setOnClickListener(v -> forceFullscreen());
         LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-2, dp(36));
         fp.leftMargin = dp(8);
         topBar.addView(fullscreenBtn, fp);
+
+        orientationBtn = pill("竖屏", "#B45309");
+        orientationBtn.setOnClickListener(v -> toggleOrientation());
+        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(-2, dp(36));
+        op.leftMargin = dp(8);
+        topBar.addView(orientationBtn, op);
 
         root.addView(topBar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
@@ -210,6 +222,25 @@ public class PlayerActivity extends Activity {
         gestureView.setVisibility(View.GONE);
         root.addView(gestureView, new FrameLayout.LayoutParams(-2, -2, Gravity.CENTER));
 
+        bottomBar = new LinearLayout(this);
+        bottomBar.setOrientation(LinearLayout.VERTICAL);
+        bottomBar.setPadding(dp(16), dp(12), dp(16), dp(12));
+        bottomBar.setBackground(glassBg("#C80A1022", "#33405E", 18));
+        TextView hint1 = new TextView(this);
+        hint1.setText("手势控制 · 左侧音量  右侧亮度  左右快进快退");
+        hint1.setTextColor(Color.parseColor("#E8EDFF"));
+        hint1.setTextSize(13);
+        bottomBar.addView(hint1);
+        TextView hint2 = new TextView(this);
+        hint2.setText("线路：" + line + "    ·    当前源：" + source.title + "    ·    可点右上角切换横/竖屏");
+        hint2.setTextColor(Color.parseColor("#9EADDD"));
+        hint2.setTextSize(11);
+        hint2.setPadding(0, dp(4), 0, 0);
+        bottomBar.addView(hint2);
+        FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
+        bp.setMargins(dp(14), 0, dp(14), dp(18));
+        root.addView(bottomBar, bp);
+
         root.setOnClickListener(v -> showBarsTemporarily());
         playerView.setOnClickListener(v -> showBarsTemporarily());
 
@@ -223,11 +254,31 @@ public class PlayerActivity extends Activity {
         v.setTextSize(13);
         v.setGravity(Gravity.CENTER);
         v.setPadding(dp(14), 0, dp(14), 0);
-        GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.parseColor(bg));
-        g.setCornerRadius(dp(18));
-        v.setBackground(g);
+        v.setBackground(glassBg(bg, "#FFFFFF", 18));
         return v;
+    }
+
+    private GradientDrawable glassBg(String color, String stroke, int radius) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(Color.parseColor(color));
+        g.setCornerRadius(dp(radius));
+        g.setStroke(dp(1), Color.parseColor(stroke));
+        return g;
+    }
+
+    private void toggleOrientation() {
+        portraitMode = !portraitMode;
+        if (portraitMode) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT);
+            if (orientationBtn != null) orientationBtn.setText("横屏");
+            showGestureTip("已切换竖屏\n适合短剧/竖版视频");
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            if (orientationBtn != null) orientationBtn.setText("竖屏");
+            showGestureTip("已切换横屏\n适合电影/长视频");
+        }
+        showBarsTemporarily();
+        handler.postDelayed(hideGestureTip, 900);
     }
 
     private void resolveAndPlay() {
@@ -301,7 +352,7 @@ public class PlayerActivity extends Activity {
                     loading.setVisibility(View.GONE);
                     stateView.setVisibility(View.VISIBLE);
                     stateView.setAlpha(1f);
-                    stateView.setText("正在播放 · 点按唤出控制栏 · 左侧音量 / 右侧亮度 / 左右滑动快进快退");
+                    stateView.setText("正在播放 · 点按唤出控制栏 · 右上角可切竖屏 · 左音量 / 右亮度 / 左右快进快退");
                     handler.postDelayed(() -> {
                         if (stateView != null) {
                             stateView.animate().alpha(0f).setDuration(220).withEndAction(() -> stateView.setVisibility(View.GONE)).start();
@@ -480,6 +531,10 @@ public class PlayerActivity extends Activity {
             gestureView.setVisibility(View.GONE);
             gestureView.setAlpha(0f);
         }
+        if (bottomBar != null) {
+            bottomBar.setVisibility(View.GONE);
+            bottomBar.setAlpha(0f);
+        }
     }
 
     private void showError(String msg) {
@@ -529,6 +584,10 @@ public class PlayerActivity extends Activity {
         if (stateView != null && (stateView.getText() != null && stateView.getText().length() > 0)) {
             stateView.setVisibility(View.VISIBLE);
             stateView.animate().alpha(1f).setDuration(120).start();
+        }
+        if (bottomBar != null) {
+            bottomBar.setVisibility(View.VISIBLE);
+            bottomBar.animate().alpha(1f).setDuration(120).start();
         }
         if (playerView != null) playerView.showController();
         handler.postDelayed(hideBars, resolved ? 3500 : 6000);
@@ -584,6 +643,10 @@ public class PlayerActivity extends Activity {
     }
 
     @Override public void onBackPressed() {
+        if (portraitMode) {
+            toggleOrientation();
+            return;
+        }
         finish();
     }
 }
