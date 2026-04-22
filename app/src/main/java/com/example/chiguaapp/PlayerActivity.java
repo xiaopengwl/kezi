@@ -715,7 +715,7 @@ public class PlayerActivity extends Activity {
             return new java.net.URL(new java.net.URL(fallbackBase), url).toString();
         } catch (Exception ignored) {
             try {
-                return new URL(raw, base).toString();
+                return new URL(new URL(base), raw).toString();
             } catch (Exception ignoredAgain) {
                 if (anchor.length() > 0) {
                     if (url.startsWith("/")) return anchor + url;
@@ -737,6 +737,11 @@ public class PlayerActivity extends Activity {
         }
         out.clear();
         out.addAll(seen);
+    }
+
+    private void addRules(ArrayList<String> out, java.util.List<String> values) {
+        if (values == null) return;
+        addRules(out, values.toArray(new String[0]));
     }
 
     private void showState(String text, boolean showLoading, float alpha) {

@@ -17,7 +17,7 @@ def test_player_has_recursive_iframe_sniffing():
     assert 'maxSniffDepth' in PLAYER or 'sniffDepth' in PLAYER
     assert 'iframe' in PLAYER.lower()
     assert 'normalizeSniffUrl(' in PLAYER
-    assert 'new URL(raw, base).toString()' in PLAYER
+    assert 'new URL(new URL(base), raw).toString()' in PLAYER
 
 
 def test_player_has_granular_sniffer_rule_pipeline():
