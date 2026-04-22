@@ -261,6 +261,10 @@ public class PlayerActivity extends Activity {
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+        ws.setAllowUniversalAccessFromFileURLs(true);
         ws.setAllowFileAccess(false);
         ws.setAllowContentAccess(false);
         ws.setUserAgentString("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
@@ -372,6 +376,9 @@ public class PlayerActivity extends Activity {
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setMediaPlaybackRequiresUserGesture(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
         ws.setUserAgentString("Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
         sniffWeb.setWebViewClient(new WebViewClient() {
             @Override
@@ -458,15 +465,20 @@ public class PlayerActivity extends Activity {
                 + "<meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no'>"
                 + "<style>html,body{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#fff;}#mount{position:relative;width:100%;height:100%;background:#000;}#player{position:absolute;inset:0;}#centerPlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.26);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9;transition:opacity .2s ease,transform .2s ease;}#centerPlay:after{content:'';margin-left:4px;border-left:18px solid rgba(255,255,255,.95);border-top:11px solid transparent;border-bottom:11px solid transparent;}#centerPlay.hide{opacity:0;pointer-events:none;transform:translate(-50%,-50%) scale(.92);}#titleFade{position:absolute;left:0;right:0;top:0;padding:14px 14px 28px;background:linear-gradient(180deg,rgba(0,0,0,.70),rgba(0,0,0,0));font-size:14px;font-weight:600;letter-spacing:.2px;z-index:8;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.35);} .art-video-player{background:#000!important;} .art-video-player .art-controls{background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.78))!important;padding-bottom:2px!important;} .art-video-player .art-bottom{padding:0 10px 10px!important;} .art-video-player .art-progress{height:3px!important;} .art-video-player .art-control .art-icon{transform:scale(.96);} .art-video-player .art-setting-panel{background:rgba(13,17,23,.95)!important;border:1px solid rgba(120,140,180,.25);} </style>"
                 + "</head><body><div id='mount'><div id='player'></div><div id='titleFade'>" + safeTitle + "</div><div id='centerPlay'></div></div>"
-                + "<script src='https://cdn.jsdelivr.net/npm/hls.js@latest'></script>"
+                + "<script>globalThis.CUSTOM_USER_AGENT='Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';</script>"
+                + "<script src='https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js'></script>"
                 + "<script src='https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js'></script>"
                 + "<script>"
                 + "var url='" + safeUrl + "';"
                 + "function postReady(){try{HermesPlayer.onReady();}catch(e){}}"
                 + "function postError(msg){try{HermesPlayer.onError(String(msg||''));}catch(e){}}"
+                + "function lower(u){return String(u||'').toLowerCase();}"
+                + "function guessType(u){u=lower(u);if(u.indexOf('m3u8')>-1||u.indexOf('application/vnd.apple.mpegurl')>-1)return 'm3u8';if(u.indexOf('.flv')>-1)return 'flv';if(u.indexOf('.mpd')>-1)return 'mpd';if(u.indexOf('.mkv')>-1)return 'mkv';return '';}"
+                + "var vtype=guessType(url);"
                 + "var center=document.getElementById('centerPlay');"
                 + "function hideCenter(){center.classList.add('hide');}function showCenter(){center.classList.remove('hide');}"
-                + "try{var art=new Artplayer({container:'#player',url:url,autoplay:true,autoSize:true,setting:true,flip:false,pip:false,screenshot:false,fullscreen:true,fullscreenWeb:true,miniProgressBar:true,backdrop:true,hotkey:false,playbackRate:true,aspectRatio:true,theme:'#4CCB89',mutex:true,volume:.7,moreVideoAttr:{playsinline:true,webkitPlaysinline:true,x5VideoPlayerType:'h5-page',x5VideoPlayerFullscreen:true,crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls({enableWorker:true,lowLatencyMode:false});hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});center.addEventListener('click',function(){art.play();hideCenter();});art.on('ready',function(){postReady();});art.on('play',function(){hideCenter();});art.on('pause',function(){showCenter();});art.on('video:ended',function(){showCenter();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});setTimeout(function(){hideCenter();},1200);}catch(e){postError(e&&e.message?e.message:'player init error');}"
+                + "function playM3u8(video, playUrl, art){if(art.hls){try{art.hls.destroy();}catch(e){}}var nativeOk=video.canPlayType('application/vnd.apple.mpegurl')||video.canPlayType('application/x-mpegURL');if(nativeOk){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});},{once:true});return;}if(window.Hls&&Hls.isSupported()){var hls=new Hls({enableWorker:true,lowLatencyMode:false});hls.loadSource(playUrl);hls.attachMedia(video);art.hls=hls;art.on('destroy',function(){try{hls.destroy();}catch(e){}});hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});}else{postError('当前设备不支持 m3u8');}}"
+                + "try{if(!window.Artplayer){throw new Error('ArtPlayer 脚本加载失败');}var opt={container:'#player',url:url,autoplay:true,type:vtype,autoSize:true,playsInline:true,setting:true,flip:false,pip:false,screenshot:false,fullscreen:true,fullscreenWeb:true,miniProgressBar:true,backdrop:true,lock:true,gesture:true,fastForward:true,autoOrientation:true,hotkey:false,playbackRate:true,aspectRatio:true,lang:'zh-cn',theme:'#4CCB89',mutex:true,volume:.7,moreVideoAttr:{preload:'auto','webkit-playsinline':true,playsInline:true,'x5-video-player-type':'h5-page','x5-video-player-fullscreen':'true',x5VideoPlayerType:'h5-page',x5VideoPlayerFullscreen:true,crossOrigin:'anonymous'},customType:{m3u8:playM3u8}};var art=new Artplayer(opt);center.addEventListener('click',function(){art.play();hideCenter();});art.on('ready',function(){postReady();try{art.play();}catch(e){}});art.on('play',function(){hideCenter();});art.on('pause',function(){showCenter();});art.on('video:ended',function(){showCenter();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});setTimeout(function(){hideCenter();},1200);}catch(e){postError(e&&e.message?e.message:'player init error');}"
                 + "</script></body></html>";
     }
 

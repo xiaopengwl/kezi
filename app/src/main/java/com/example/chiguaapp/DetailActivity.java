@@ -32,11 +32,13 @@ public class DetailActivity extends Activity {
 
     LinearLayout root;
     LinearLayout lineTabs;
+    HorizontalScrollView lineScroll;
     LinearLayout episodeWrap;
     ProgressBar progress;
     TextView titleTv;
     TextView sourceTv;
     TextView statTv;
+    TextView lineTitle;
     TextView descTv;
     ImageView poster;
 
@@ -182,17 +184,19 @@ public class DetailActivity extends Activity {
         descTv.setPadding(0, dp(8), 0, 0);
         descCard.addView(descTv);
 
-        TextView lineTitle = sectionTitle("播放线路");
+        lineTitle = sectionTitle("播放线路");
+        lineTitle.setVisibility(View.GONE);
         root.addView(lineTitle);
 
-        HorizontalScrollView hsv = new HorizontalScrollView(this);
-        hsv.setHorizontalScrollBarEnabled(false);
+        lineScroll = new HorizontalScrollView(this);
+        lineScroll.setHorizontalScrollBarEnabled(false);
+        lineScroll.setVisibility(View.GONE);
         lineTabs = new LinearLayout(this);
         lineTabs.setOrientation(LinearLayout.HORIZONTAL);
-        hsv.addView(lineTabs);
+        lineScroll.addView(lineTabs);
         LinearLayout.LayoutParams hsvLp = new LinearLayout.LayoutParams(-1, -2);
         hsvLp.topMargin = dp(6);
-        root.addView(hsv, hsvLp);
+        root.addView(lineScroll, hsvLp);
 
         TextView epTitle = sectionTitle("选集");
         root.addView(epTitle);
@@ -364,6 +368,13 @@ public class DetailActivity extends Activity {
         ArrayList<String> ls = lines();
         if (activeLine == null || activeLine.length() == 0 || !ls.contains(activeLine)) {
             activeLine = ls.get(0);
+        }
+        boolean multiLine = ls.size() > 1;
+        if (lineTitle != null) lineTitle.setVisibility(multiLine ? View.VISIBLE : View.GONE);
+        if (lineScroll != null) lineScroll.setVisibility(multiLine ? View.VISIBLE : View.GONE);
+        if (!multiLine) {
+            buildEpisodes();
+            return;
         }
         for (String line : ls) {
             TextView chip = tv(line, 13, Color.WHITE, Typeface.BOLD);
