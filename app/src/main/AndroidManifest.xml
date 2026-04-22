@@ -8,7 +8,7 @@
         android:label="晓鹏影视"
         android:icon="@drawable/ic_launcher"
         android:roundIcon="@drawable/ic_launcher">
-        <activity android:name=".PlayerActivity" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" />
+        <activity android:name=".PlayerActivity" android:screenOrientation="portrait" android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".DetailActivity" />
         <activity android:name=".SourceManagerActivity" />
         <activity android:name=".MainActivity" android:exported="true">
