@@ -49,6 +49,8 @@ public class PlayerActivity extends Activity {
     private TextView titleView;
     private TextView lineView;
     private TextView stateView;
+    private TextView speedHintView;
+    private LinearLayout speedWrap;
     private LinearLayout episodeWrap;
 
     private SourceConfig source;
@@ -64,6 +66,8 @@ public class PlayerActivity extends Activity {
     private final ArrayList<String> episodeInputs = new ArrayList<>();
     private int currentIndex = 0;
     private String seriesTitle = "晓鹏影视";
+    private float playbackSpeed = 1.0f;
+    private static final float[] SPEED_PRESETS = new float[]{0.75f, 1.0f, 1.25f, 1.5f, 2.0f};
 
     private final ArrayList<String> snifferMatchRules = new ArrayList<>();
     private final ArrayList<String> snifferExcludeRules = new ArrayList<>();
@@ -83,6 +87,30 @@ public class PlayerActivity extends Activity {
             stateView.animate().alpha(0.35f).setDuration(220).start();
         }
     };
+
+    @Override
+    public void onBackPressed() {
+        if (Jzvd.backPress()) {
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        handler.removeCallbacks(hideState);
+        Jzvd.releaseAllVideos();
+        releaseSniffer();
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        Jzvd.releaseAllVideos();
+        releaseSniffer();
+        super.onDestroy();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -275,6 +303,42 @@ public class PlayerActivity extends Activity {
         railTitle.setPadding(0, dp(18), 0, dp(8));
         root.addView(railTitle);
 
+        LinearLayout speedCard = new LinearLayout(this);
+        speedCard.setOrientation(LinearLayout.VERTICAL);
+        speedCard.setPadding(dp(12), dp(10), dp(12), dp(12));
+        speedCard.setBackground(cardBg("#0F1420", "#28334D", 18));
+        LinearLayout.LayoutParams speedCardLp = new LinearLayout.LayoutParams(-1, -2);
+        speedCardLp.bottomMargin = dp(12);
+        root.addView(speedCard, speedCardLp);
+
+        LinearLayout speedTitleRow = new LinearLayout(this);
+        speedTitleRow.setGravity(Gravity.CENTER_VERTICAL);
+        speedCard.addView(speedTitleRow, new LinearLayout.LayoutParams(-1, dp(28)));
+
+        TextView speedTitle = new TextView(this);
+        speedTitle.setText("播放倍速");
+        speedTitle.setTextColor(Color.WHITE);
+        speedTitle.setTextSize(15);
+        speedTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        speedTitleRow.addView(speedTitle, new LinearLayout.LayoutParams(0, -1, 1));
+
+        speedHintView = new TextView(this);
+        speedHintView.setText("当前默认 1.0x");
+        speedHintView.setTextColor(Color.parseColor("#8EA0C4"));
+        speedHintView.setTextSize(11);
+        speedHintView.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        speedTitleRow.addView(speedHintView, new LinearLayout.LayoutParams(-2, -1));
+
+        HorizontalScrollView speedScroll = new HorizontalScrollView(this);
+        speedScroll.setHorizontalScrollBarEnabled(false);
+        speedCard.addView(speedScroll, new LinearLayout.LayoutParams(-1, dp(54)));
+
+        speedWrap = new LinearLayout(this);
+        speedWrap.setOrientation(LinearLayout.HORIZONTAL);
+        speedWrap.setPadding(0, dp(8), 0, 0);
+        speedScroll.addView(speedWrap, new HorizontalScrollView.LayoutParams(-2, -1));
+        buildSpeedButtons();
+
         LinearLayout railCard = new LinearLayout(this);
         railCard.setOrientation(LinearLayout.VERTICAL);
         railCard.setPadding(dp(12), dp(10), dp(12), dp(12));
@@ -321,6 +385,53 @@ public class PlayerActivity extends Activity {
         chip.setPadding(dp(10), dp(6), dp(10), dp(6));
         chip.setBackground(cardBg(bg, stroke, 16));
         return chip;
+    }
+
+    private void buildSpeedButtons() {
+        if (speedWrap == null) return;
+        speedWrap.removeAllViews();
+        for (float speed : SPEED_PRESETS) {
+            TextView chip = new TextView(this);
+            chip.setText(formatSpeed(speed));
+            chip.setTextSize(13);
+            chip.setTypeface(Typeface.DEFAULT_BOLD);
+            chip.setGravity(Gravity.CENTER);
+            chip.setPadding(dp(16), 0, dp(16), 0);
+            boolean active = Math.abs(speed - playbackSpeed) < 0.001f;
+            chip.setTextColor(Color.parseColor(active ? "#FFFFFF" : "#DDE6FF"));
+            chip.setBackground(active ? cardBg("#E50914", "#FF5260", 18) : cardBg("#182033", "#33415F", 18));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(40));
+            lp.rightMargin = dp(8);
+            speedWrap.addView(chip, lp);
+            chip.setOnClickListener(v -> {
+                playbackSpeed = speed;
+                buildSpeedButtons();
+                applyPlaybackSpeed(true);
+            });
+        }
+        if (speedHintView != null) {
+            speedHintView.setText("当前 " + formatSpeed(playbackSpeed));
+        }
+    }
+
+    private void applyPlaybackSpeed(boolean showToastState) {
+        if (speedHintView != null) {
+            speedHintView.setText("当前 " + formatSpeed(playbackSpeed));
+        }
+        if (jzPlayer == null || jzPlayer.mediaInterface == null) {
+            if (showToastState) showState("已切换到 " + formatSpeed(playbackSpeed) + "，下次起播生效", false, 1f);
+            return;
+        }
+        try {
+            jzPlayer.mediaInterface.setSpeed(playbackSpeed);
+            if (showToastState) showState("倍速已切换为 " + formatSpeed(playbackSpeed), false, 1f);
+        } catch (Exception e) {
+            if (showToastState) showState("当前播放器暂不支持倍速切换", false, 1f);
+        }
+    }
+
+    private String formatSpeed(float speed) {
+        return String.format(Locale.US, "%.2fx", speed).replace(".00x", ".0x").replace(".50x", ".5x");
     }
 
     private void updateHeader() {
@@ -501,7 +612,8 @@ public class PlayerActivity extends Activity {
             jzPlayer.setUp(mediaUrl, title, Jzvd.SCREEN_NORMAL, JZMediaExoMedia3.class);
             jzPlayer.startVideo();
             playerReady = true;
-            showState("正在播放", false, 1f);
+            applyPlaybackSpeed(false);
+            showState("正在播放 · " + formatSpeed(playbackSpeed), false, 1f);
             handler.postDelayed(hideState, 1200);
         } catch (Exception e) {
             showError("播放失败：" + e.getMessage());
