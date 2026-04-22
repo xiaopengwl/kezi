@@ -1,7 +1,6 @@
 package com.example.chiguaapp;
 
 import android.app.Activity;
-import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -12,8 +11,6 @@ import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -23,6 +20,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -67,9 +65,6 @@ public class PlayerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-        hideSystemBars();
 
         input = getIntent().getStringExtra("input");
         if (input == null) input = getIntent().getStringExtra("url");
@@ -114,19 +109,58 @@ public class PlayerActivity extends Activity {
     }
 
     private void buildUi() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.parseColor("#090B10"));
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setBackgroundColor(Color.parseColor("#090B10"));
 
-        root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(14), dp(14), dp(14), dp(22));
-        scroll.addView(root, new ScrollView.LayoutParams(-1, -1));
+        LinearLayout nav = new LinearLayout(this);
+        nav.setOrientation(LinearLayout.HORIZONTAL);
+        nav.setGravity(Gravity.CENTER_VERTICAL);
+        nav.setPadding(dp(12), dp(10), dp(12), dp(8));
+        nav.setBackgroundColor(Color.parseColor("#0B0F18"));
+        page.addView(nav, new LinearLayout.LayoutParams(-1, dp(58)));
+
+        TextView back = new TextView(this);
+        back.setText("‹");
+        back.setTextColor(Color.WHITE);
+        back.setTextSize(30);
+        back.setTypeface(Typeface.DEFAULT_BOLD);
+        back.setGravity(Gravity.CENTER);
+        back.setBackground(cardBg("#171D2B", "#2D3548", 18));
+        nav.addView(back, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        back.setOnClickListener(v -> finish());
+
+        LinearLayout navText = new LinearLayout(this);
+        navText.setOrientation(LinearLayout.VERTICAL);
+        navText.setPadding(dp(10), 0, dp(10), 0);
+        nav.addView(navText, new LinearLayout.LayoutParams(0, -1, 1));
+
+        titleView = new TextView(this);
+        titleView.setTextColor(Color.WHITE);
+        titleView.setTextSize(16);
+        titleView.setTypeface(Typeface.DEFAULT_BOLD);
+        titleView.setSingleLine(true);
+        navText.addView(titleView, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        lineView = new TextView(this);
+        lineView.setTextColor(Color.parseColor("#9EAFD6"));
+        lineView.setTextSize(11);
+        lineView.setSingleLine(true);
+        navText.addView(lineView, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        TextView sourceTag = new TextView(this);
+        sourceTag.setText("移动版");
+        sourceTag.setTextColor(Color.parseColor("#B8FFEA"));
+        sourceTag.setTextSize(12);
+        sourceTag.setTypeface(Typeface.DEFAULT_BOLD);
+        sourceTag.setGravity(Gravity.CENTER);
+        sourceTag.setPadding(dp(10), 0, dp(10), 0);
+        sourceTag.setBackground(cardBg("#17322E", "#3DD2AC", 18));
+        nav.addView(sourceTag, new LinearLayout.LayoutParams(-2, dp(36)));
 
         playerBox = new FrameLayout(this);
-        playerBox.setBackground(cardBg("#05070B", "#202A3B", 22));
-        LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, dp(232));
-        root.addView(playerBox, playerLp);
+        playerBox.setBackground(cardBg("#05070B", "#151B2A", 0));
+        page.addView(playerBox, new LinearLayout.LayoutParams(-1, dp(230)));
 
         playerWeb = createPlayerWebView();
         playerBox.addView(playerWeb, new FrameLayout.LayoutParams(-1, -1));
@@ -148,54 +182,69 @@ public class PlayerActivity extends Activity {
         stateView.setText("正在解析播放地址…");
         overlay.addView(stateView, new LinearLayout.LayoutParams(-2, -2));
 
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(14), dp(12), dp(14), dp(18));
+        scroll.addView(root, new ScrollView.LayoutParams(-1, -2));
+
         LinearLayout infoCard = new LinearLayout(this);
         infoCard.setOrientation(LinearLayout.VERTICAL);
-        infoCard.setPadding(dp(16), dp(16), dp(16), dp(16));
+        infoCard.setPadding(dp(15), dp(14), dp(15), dp(14));
         infoCard.setBackground(cardBg("#101521", "#222D42", 18));
-        LinearLayout.LayoutParams infoLp = new LinearLayout.LayoutParams(-1, -2);
-        infoLp.topMargin = dp(14);
-        root.addView(infoCard, infoLp);
+        root.addView(infoCard, new LinearLayout.LayoutParams(-1, -2));
 
-        titleView = new TextView(this);
-        titleView.setTextColor(Color.WHITE);
-        titleView.setTextSize(17);
-        titleView.setTypeface(Typeface.DEFAULT_BOLD);
-        infoCard.addView(titleView);
-
-        lineView = new TextView(this);
-        lineView.setTextColor(Color.parseColor("#9EAFD6"));
-        lineView.setTextSize(12);
-        lineView.setPadding(0, dp(8), 0, 0);
-        infoCard.addView(lineView);
+        TextView section = new TextView(this);
+        section.setText("正在观看");
+        section.setTextColor(Color.WHITE);
+        section.setTextSize(17);
+        section.setTypeface(Typeface.DEFAULT_BOLD);
+        infoCard.addView(section);
 
         TextView tip = new TextView(this);
-        tip.setText("播放器内核改成更接近 ArtPlayer 官方 mobile 版的样式：上面是沉浸式移动播放器，下面保留最简单的切集按钮。遇到非直链时，仍然自动网页嗅探后再播。");
+        tip.setText("顶部播放器 + 顶部导航 + 底部选集栏。非直链会自动解析/嗅探，不需要手动点外部播放器。");
         tip.setTextColor(Color.parseColor("#C9D4F4"));
         tip.setTextSize(13);
-        tip.setPadding(0, dp(14), 0, 0);
+        tip.setPadding(0, dp(10), 0, 0);
         infoCard.addView(tip);
 
-        TextView epTitle = new TextView(this);
-        epTitle.setText("选集按钮");
-        epTitle.setTextColor(Color.WHITE);
-        epTitle.setTextSize(17);
-        epTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        epTitle.setPadding(dp(2), dp(18), dp(2), 0);
-        root.addView(epTitle);
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setOrientation(LinearLayout.VERTICAL);
+        bottom.setPadding(dp(12), dp(8), dp(12), dp(10));
+        bottom.setBackground(cardBg("#0F1420", "#28334D", 0));
+        page.addView(bottom, new LinearLayout.LayoutParams(-1, -2));
 
-        LinearLayout epCard = new LinearLayout(this);
-        epCard.setOrientation(LinearLayout.VERTICAL);
-        epCard.setPadding(dp(12), dp(12), dp(12), dp(12));
-        epCard.setBackground(cardBg("#101521", "#23314E", 20));
-        LinearLayout.LayoutParams epCardLp = new LinearLayout.LayoutParams(-1, -2);
-        epCardLp.topMargin = dp(8);
-        root.addView(epCard, epCardLp);
+        LinearLayout bottomTitle = new LinearLayout(this);
+        bottomTitle.setGravity(Gravity.CENTER_VERTICAL);
+        bottom.addView(bottomTitle, new LinearLayout.LayoutParams(-1, dp(28)));
+
+        TextView epTitle = new TextView(this);
+        epTitle.setText("选集");
+        epTitle.setTextColor(Color.WHITE);
+        epTitle.setTextSize(15);
+        epTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        bottomTitle.addView(epTitle, new LinearLayout.LayoutParams(0, -1, 1));
+
+        TextView epHint = new TextView(this);
+        epHint.setText("左右滑动切换");
+        epHint.setTextColor(Color.parseColor("#8EA0C4"));
+        epHint.setTextSize(11);
+        epHint.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
+        bottomTitle.addView(epHint, new LinearLayout.LayoutParams(-2, -1));
+
+        HorizontalScrollView hsv = new HorizontalScrollView(this);
+        hsv.setHorizontalScrollBarEnabled(false);
+        bottom.addView(hsv, new LinearLayout.LayoutParams(-1, dp(50)));
 
         episodeWrap = new LinearLayout(this);
-        episodeWrap.setOrientation(LinearLayout.VERTICAL);
-        epCard.addView(episodeWrap, new LinearLayout.LayoutParams(-1, -2));
+        episodeWrap.setOrientation(LinearLayout.HORIZONTAL);
+        episodeWrap.setPadding(0, dp(6), 0, 0);
+        hsv.addView(episodeWrap, new HorizontalScrollView.LayoutParams(-2, -1));
 
-        setContentView(scroll);
+        setContentView(page);
     }
 
     private void updateHeader() {
@@ -209,40 +258,29 @@ public class PlayerActivity extends Activity {
         episodeWrap.removeAllViews();
         if (episodeInputs.isEmpty()) {
             TextView empty = new TextView(this);
-            empty.setText("当前没有可切换的选集");
+            empty.setText("暂无选集");
             empty.setTextColor(Color.parseColor("#8EA0C4"));
-            empty.setTextSize(14);
-            empty.setPadding(dp(4), dp(8), dp(4), dp(8));
-            episodeWrap.addView(empty);
+            empty.setTextSize(13);
+            empty.setPadding(dp(12), 0, dp(12), 0);
+            episodeWrap.addView(empty, new LinearLayout.LayoutParams(-2, dp(42)));
             return;
         }
-        LinearLayout row = null;
-        int col = 0;
         for (int i = 0; i < episodeInputs.size(); i++) {
-            if (row == null || col == 3) {
-                row = new LinearLayout(this);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(-1, -2);
-                if (episodeWrap.getChildCount() > 0) rowLp.topMargin = dp(8);
-                episodeWrap.addView(row, rowLp);
-                col = 0;
-            }
             final int index = i;
             String name = episodeNames.get(i) == null || episodeNames.get(i).trim().length() == 0 ? ("第" + (i + 1) + "集") : episodeNames.get(i);
             TextView ep = new TextView(this);
             ep.setText(name);
             ep.setTextSize(13);
-            ep.setTextColor(Color.parseColor(i == currentIndex ? "#FFFFFF" : "#EAF0FF"));
+            ep.setTextColor(Color.parseColor(i == currentIndex ? "#FFFFFF" : "#DDE6FF"));
             ep.setTypeface(Typeface.DEFAULT_BOLD);
             ep.setGravity(Gravity.CENTER);
             ep.setSingleLine(true);
-            ep.setPadding(dp(6), dp(12), dp(6), dp(12));
-            ep.setBackground(i == currentIndex ? cardBg("#5568FF", "#7384FF", 16) : cardBg("#151F35", "#31415F", 16));
-            LinearLayout.LayoutParams epLp = new LinearLayout.LayoutParams(0, -2, 1);
-            if (col < 2) epLp.rightMargin = dp(8);
-            row.addView(ep, epLp);
+            ep.setPadding(dp(16), 0, dp(16), 0);
+            ep.setBackground(i == currentIndex ? cardBg("#E50914", "#FF5260", 18) : cardBg("#182033", "#33415F", 18));
+            LinearLayout.LayoutParams epLp = new LinearLayout.LayoutParams(-2, dp(40));
+            epLp.rightMargin = dp(8);
+            episodeWrap.addView(ep, epLp);
             ep.setOnClickListener(v -> switchEpisode(index));
-            col++;
         }
     }
 
@@ -278,25 +316,6 @@ public class PlayerActivity extends Activity {
             }
         });
         return web;
-    }
-
-    private void hideSystemBars() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-            }
-        } else {
-            View decor = getWindow().getDecorView();
-            decor.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-        }
     }
 
     private void resolveAndPlay() {
@@ -509,7 +528,6 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        hideSystemBars();
         if (playerWeb != null) playerWeb.onResume();
         if (sniffWeb != null) sniffWeb.onResume();
     }
