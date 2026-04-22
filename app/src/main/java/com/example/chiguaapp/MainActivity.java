@@ -15,6 +15,7 @@ public class MainActivity extends Activity {
     private LinearLayout categoryBar;
     private EditText searchBox;
     private Button prevBtn, nextBtn, sourceBtn, homeBtn;
+    private Button navHomeBtn, navSearchBtn, navLibraryBtn, navProfileBtn;
     private ListView listView;
     private ProgressBar progress;
     private TextView status, subTitle, pageBadge;
@@ -35,40 +36,54 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         source = SourceConfig.load(this); Scraper.useSource(source); engine = new DrpyEngine(this, source);
 
-        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(Color.parseColor("#0B1020"));
+        LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setBackgroundColor(Color.parseColor("#080B12"));
 
-        LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(18),dp(18),dp(18),dp(14));
-        GradientDrawable heroBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{Color.parseColor("#202A55"), Color.parseColor("#111827"), Color.parseColor("#090D18")});
+        LinearLayout hero = new LinearLayout(this); hero.setOrientation(LinearLayout.VERTICAL); hero.setPadding(dp(18),dp(18),dp(18),dp(16));
+        GradientDrawable heroBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{Color.parseColor("#1A0E16"), Color.parseColor("#111827"), Color.parseColor("#090D18")});
         hero.setBackground(heroBg);
         LinearLayout top = new LinearLayout(this); top.setOrientation(LinearLayout.HORIZONTAL); top.setGravity(Gravity.CENTER_VERTICAL);
         TextView logo = tv("晓鹏影视",28,Color.WHITE,Typeface.BOLD); top.addView(logo,new LinearLayout.LayoutParams(0,-2,1));
-        TextView styleTag = tv("ZyFun 风格",12,Color.parseColor("#B8FFEA"),Typeface.BOLD); styleTag.setGravity(Gravity.CENTER); styleTag.setPadding(dp(10),0,dp(10),0); styleTag.setBackground(strokeBg(Color.parseColor("#203344"),1,"#4DD9C0",18)); LinearLayout.LayoutParams stp=new LinearLayout.LayoutParams(-2,dp(34)); stp.rightMargin=dp(8); top.addView(styleTag,stp);
-        sourceBtn = new Button(this); sourceBtn.setText("源管理"); sourceBtn.setTextColor(Color.WHITE); sourceBtn.setBackground(strokeBg(Color.parseColor("#243053"),1,"#6B7CFF",22)); top.addView(sourceBtn,new LinearLayout.LayoutParams(dp(96),dp(42)));
+        TextView styleTag = tv("奈飞 / 哔哩风",12,Color.parseColor("#FFE8EC"),Typeface.BOLD); styleTag.setGravity(Gravity.CENTER); styleTag.setPadding(dp(10),0,dp(10),0); styleTag.setBackground(strokeBg(Color.parseColor("#35141A"),1,"#E85A68",18)); LinearLayout.LayoutParams stp=new LinearLayout.LayoutParams(-2,dp(34)); stp.rightMargin=dp(8); top.addView(styleTag,stp);
+        sourceBtn = new Button(this); sourceBtn.setText("源管理"); sourceBtn.setTextColor(Color.WHITE); sourceBtn.setAllCaps(false); sourceBtn.setBackground(strokeBg(Color.parseColor("#1D2436"),1,"#4D5F88",22)); top.addView(sourceBtn,new LinearLayout.LayoutParams(dp(96),dp(42)));
         hero.addView(top);
-        subTitle = tv("当前源："+source.title,13,Color.parseColor("#B9C2D9"),Typeface.NORMAL); subTitle.setPadding(0,dp(8),0,0); hero.addView(subTitle);
-        TextView slogan = tv("聚合视频源 · 精致封面流 · 在线解析播放",13,Color.parseColor("#8EA0C4"),Typeface.NORMAL); slogan.setPadding(0,dp(4),0,0); hero.addView(slogan);
+        subTitle = tv("当前源："+source.title,13,Color.parseColor("#D7DDF2"),Typeface.NORMAL); subTitle.setPadding(0,dp(8),0,0); hero.addView(subTitle);
+        TextView slogan = tv("今日主推 / 奈飞式大卡片 · 底栏切换 · 在线解析播放",13,Color.parseColor("#97A6C8"),Typeface.NORMAL); slogan.setPadding(0,dp(4),0,0); hero.addView(slogan);
+
+        LinearLayout heroActionRow = new LinearLayout(this); heroActionRow.setOrientation(LinearLayout.HORIZONTAL); heroActionRow.setPadding(0,dp(14),0,0); hero.addView(heroActionRow,new LinearLayout.LayoutParams(-1,-2));
+        TextView actionPrimary = tv("▶ 继续看片",14,Color.WHITE,Typeface.BOLD); actionPrimary.setGravity(Gravity.CENTER); actionPrimary.setBackground(bg(Color.parseColor("#E50914"),18)); heroActionRow.addView(actionPrimary,new LinearLayout.LayoutParams(0,dp(42),1));
+        TextView actionSecondary = tv("📂 片库",14,Color.parseColor("#E4EBFF"),Typeface.BOLD); actionSecondary.setGravity(Gravity.CENTER); actionSecondary.setBackground(strokeBg(Color.parseColor("#161D2E"),1,"#33415F",18)); LinearLayout.LayoutParams asp=new LinearLayout.LayoutParams(0,dp(42),1); asp.leftMargin=dp(10); heroActionRow.addView(actionSecondary,asp);
+        actionPrimary.setOnClickListener(v -> loadHome());
+        actionSecondary.setOnClickListener(v -> searchBox.requestFocus());
         root.addView(hero,new LinearLayout.LayoutParams(-1,-2));
 
         LinearLayout search = new LinearLayout(this); search.setOrientation(LinearLayout.HORIZONTAL); search.setPadding(dp(14),dp(12),dp(14),dp(6)); search.setGravity(Gravity.CENTER_VERTICAL);
-        searchBox = new EditText(this); searchBox.setSingleLine(true); searchBox.setHint("搜索片名 / 关键词"); searchBox.setTextColor(Color.WHITE); searchBox.setHintTextColor(Color.parseColor("#7C88A8")); searchBox.setPadding(dp(14),0,dp(14),0); searchBox.setBackground(strokeBg(Color.parseColor("#151B2E"),1,"#293552",18));
+        searchBox = new EditText(this); searchBox.setSingleLine(true); searchBox.setHint("想看什么直接搜"); searchBox.setTextColor(Color.WHITE); searchBox.setHintTextColor(Color.parseColor("#7C88A8")); searchBox.setPadding(dp(14),0,dp(14),0); searchBox.setBackground(strokeBg(Color.parseColor("#131827"),1,"#2A344C",18));
         search.addView(searchBox,new LinearLayout.LayoutParams(0,dp(46),1));
-        Button searchBtn = new Button(this); searchBtn.setText("搜索"); searchBtn.setTextColor(Color.WHITE); searchBtn.setBackground(bg(Color.parseColor("#5B6CFF"),18)); LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(82),dp(46)); sp.leftMargin=dp(8); search.addView(searchBtn,sp);
+        Button searchBtn = new Button(this); searchBtn.setText("搜索"); searchBtn.setAllCaps(false); searchBtn.setTextColor(Color.WHITE); searchBtn.setBackground(bg(Color.parseColor("#FB7299"),18)); LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(82),dp(46)); sp.leftMargin=dp(8); search.addView(searchBtn,sp);
         root.addView(search);
 
+        TextView categoryTitle = tv("片库频道",16,Color.WHITE,Typeface.BOLD); categoryTitle.setPadding(dp(16),dp(4),dp(16),dp(2)); root.addView(categoryTitle);
         HorizontalScrollView hsv = new HorizontalScrollView(this); hsv.setHorizontalScrollBarEnabled(false); categoryBar = new LinearLayout(this); categoryBar.setOrientation(LinearLayout.HORIZONTAL); categoryBar.setPadding(dp(14),dp(4),dp(14),dp(8)); hsv.addView(categoryBar); root.addView(hsv);
         buildCategories();
 
         LinearLayout nav = new LinearLayout(this); nav.setOrientation(LinearLayout.HORIZONTAL); nav.setGravity(Gravity.CENTER_VERTICAL); nav.setPadding(dp(14),0,dp(14),dp(8));
-        homeBtn = new Button(this); homeBtn.setText("推荐"); homeBtn.setTextColor(Color.WHITE); homeBtn.setBackground(strokeBg(Color.parseColor("#151B2E"),1,"#34415F",16)); nav.addView(homeBtn,new LinearLayout.LayoutParams(0,dp(42),1));
-        prevBtn = new Button(this); prevBtn.setText("上一页"); prevBtn.setTextColor(Color.WHITE); prevBtn.setBackground(strokeBg(Color.parseColor("#151B2E"),1,"#34415F",16)); LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(42),1); bp.leftMargin=dp(8); nav.addView(prevBtn,bp);
-        pageBadge = tv("第 1 页",14,Color.parseColor("#D5DCF2"),Typeface.BOLD); pageBadge.setGravity(Gravity.CENTER); LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(74),dp(42)); pp.leftMargin=dp(8); nav.addView(pageBadge,pp);
-        nextBtn = new Button(this); nextBtn.setText("下一页"); nextBtn.setTextColor(Color.WHITE); nextBtn.setBackground(bg(Color.parseColor("#5B6CFF"),16)); LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,dp(42),1); np.leftMargin=dp(8); nav.addView(nextBtn,np);
+        homeBtn = new Button(this); homeBtn.setText("推荐"); homeBtn.setAllCaps(false); homeBtn.setTextColor(Color.WHITE); homeBtn.setBackground(strokeBg(Color.parseColor("#141A2B"),1,"#34415F",16)); nav.addView(homeBtn,new LinearLayout.LayoutParams(0,dp(42),1));
+        prevBtn = new Button(this); prevBtn.setText("上一页"); prevBtn.setAllCaps(false); prevBtn.setTextColor(Color.WHITE); prevBtn.setBackground(strokeBg(Color.parseColor("#141A2B"),1,"#34415F",16)); LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(0,dp(42),1); bp.leftMargin=dp(8); nav.addView(prevBtn,bp);
+        pageBadge = tv("第 1 页",14,Color.parseColor("#D5DCF2"),Typeface.BOLD); pageBadge.setGravity(Gravity.CENTER); pageBadge.setBackground(strokeBg(Color.parseColor("#101624"),1,"#293552",16)); LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(dp(84),dp(42)); pp.leftMargin=dp(8); nav.addView(pageBadge,pp);
+        nextBtn = new Button(this); nextBtn.setText("下一页"); nextBtn.setAllCaps(false); nextBtn.setTextColor(Color.WHITE); nextBtn.setBackground(bg(Color.parseColor("#5B6CFF"),16)); LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(0,dp(42),1); np.leftMargin=dp(8); nav.addView(nextBtn,np);
         root.addView(nav);
 
         progress = new ProgressBar(this); progress.setVisibility(View.GONE); root.addView(progress,new LinearLayout.LayoutParams(-1,dp(4)));
         status = tv("准备加载推荐内容",13,Color.parseColor("#9BA8C8"),Typeface.NORMAL); status.setPadding(dp(16),dp(4),dp(16),dp(8)); root.addView(status);
 
-        listView = new ListView(this); listView.setDivider(null); listView.setCacheColorHint(Color.TRANSPARENT); listView.setSelector(new ColorDrawable(Color.TRANSPARENT)); adapter = new VideoAdapter(); listView.setAdapter(adapter); root.addView(listView, new LinearLayout.LayoutParams(-1,0,1));
+        listView = new ListView(this); listView.setDivider(null); listView.setCacheColorHint(Color.TRANSPARENT); listView.setSelector(new ColorDrawable(Color.TRANSPARENT)); listView.setVerticalScrollBarEnabled(false); adapter = new VideoAdapter(); listView.setAdapter(adapter); root.addView(listView, new LinearLayout.LayoutParams(-1,0,1));
+
+        LinearLayout bottomNav = new LinearLayout(this); bottomNav.setOrientation(LinearLayout.HORIZONTAL); bottomNav.setGravity(Gravity.CENTER_VERTICAL); bottomNav.setPadding(dp(10),dp(10),dp(10),dp(10)); bottomNav.setBackground(strokeBg(Color.parseColor("#0D111A"),1,"#1F293B",0));
+        navHomeBtn = new Button(this); navHomeBtn.setText("首页"); navHomeBtn.setAllCaps(false); navHomeBtn.setTextColor(Color.WHITE); navHomeBtn.setBackground(bg(Color.parseColor("#E50914"),18)); bottomNav.addView(navHomeBtn,new LinearLayout.LayoutParams(0,dp(44),1));
+        navSearchBtn = new Button(this); navSearchBtn.setText("搜索"); navSearchBtn.setAllCaps(false); navSearchBtn.setTextColor(Color.parseColor("#D9E3FF")); navSearchBtn.setBackground(strokeBg(Color.parseColor("#121826"),1,"#2D3A55",18)); LinearLayout.LayoutParams nsp=new LinearLayout.LayoutParams(0,dp(44),1); nsp.leftMargin=dp(8); bottomNav.addView(navSearchBtn,nsp);
+        navLibraryBtn = new Button(this); navLibraryBtn.setText("片库"); navLibraryBtn.setAllCaps(false); navLibraryBtn.setTextColor(Color.parseColor("#D9E3FF")); navLibraryBtn.setBackground(strokeBg(Color.parseColor("#121826"),1,"#2D3A55",18)); LinearLayout.LayoutParams nlp=new LinearLayout.LayoutParams(0,dp(44),1); nlp.leftMargin=dp(8); bottomNav.addView(navLibraryBtn,nlp);
+        navProfileBtn = new Button(this); navProfileBtn.setText("我的源"); navProfileBtn.setAllCaps(false); navProfileBtn.setTextColor(Color.parseColor("#D9E3FF")); navProfileBtn.setBackground(strokeBg(Color.parseColor("#121826"),1,"#2D3A55",18)); LinearLayout.LayoutParams npp=new LinearLayout.LayoutParams(0,dp(44),1); npp.leftMargin=dp(8); bottomNav.addView(navProfileBtn,npp);
+        root.addView(bottomNav,new LinearLayout.LayoutParams(-1,-2));
         setContentView(root);
 
         homeBtn.setOnClickListener(v -> loadHome());
@@ -76,6 +91,10 @@ public class MainActivity extends Activity {
         prevBtn.setOnClickListener(v -> { if(page>1){ page--; load(); } });
         nextBtn.setOnClickListener(v -> { page++; load(); });
         sourceBtn.setOnClickListener(v -> startActivityForResult(new Intent(this, SourceManagerActivity.class), 9));
+        navHomeBtn.setOnClickListener(v -> loadHome());
+        navSearchBtn.setOnClickListener(v -> { searchBox.requestFocus(); searchBox.setSelection(searchBox.getText().length()); Toast.makeText(this,"输入关键词后点右侧搜索",Toast.LENGTH_SHORT).show(); });
+        navLibraryBtn.setOnClickListener(v -> { if(categoryBar.getChildCount()>0){ View first=categoryBar.getChildAt(0); first.performClick(); } else { loadHome(); } });
+        navProfileBtn.setOnClickListener(v -> startActivityForResult(new Intent(this, SourceManagerActivity.class), 9));
         listView.setOnItemClickListener((p,v,pos,id) -> {
             VideoItem it = items.get(pos);
             if(it.url==null || it.url.trim().length()==0){ Toast.makeText(this,"这个条目没有详情地址，换一个源或分类试试",Toast.LENGTH_SHORT).show(); return; }
@@ -131,13 +150,15 @@ public class MainActivity extends Activity {
         public View getView(int pos, View convert, ViewGroup parent){
             LinearLayout card; ImageView cover; TextView title,desc;
             if(convert==null){
-                card=new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.HORIZONTAL); card.setPadding(dp(12),dp(10),dp(12),dp(10)); card.setBackgroundColor(Color.TRANSPARENT);
-                cover=new ImageView(MainActivity.this); cover.setId(1001); cover.setScaleType(ImageView.ScaleType.CENTER_CROP); cover.setBackground(placeholderBg()); LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(96),dp(136)); card.addView(cover,cp);
-                LinearLayout info=new LinearLayout(MainActivity.this); info.setOrientation(LinearLayout.VERTICAL); info.setPadding(dp(14),dp(4),dp(8),dp(4));
+                card=new LinearLayout(MainActivity.this); card.setOrientation(LinearLayout.HORIZONTAL); card.setPadding(dp(12),dp(12),dp(12),dp(12)); card.setBackground(strokeBg(Color.parseColor("#101522"),1,"#1D2638",22));
+                AbsListView.LayoutParams rootLp = new AbsListView.LayoutParams(-1, -2); card.setLayoutParams(rootLp);
+                cover=new ImageView(MainActivity.this); cover.setId(1001); cover.setScaleType(ImageView.ScaleType.CENTER_CROP); cover.setBackground(placeholderBg()); LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(dp(102),dp(146)); cp.rightMargin=dp(2); card.addView(cover,cp);
+                LinearLayout info=new LinearLayout(MainActivity.this); info.setOrientation(LinearLayout.VERTICAL); info.setPadding(dp(14),dp(2),dp(6),dp(2));
                 title=tv("",17,Color.WHITE,Typeface.BOLD); title.setId(1002); title.setMaxLines(2); info.addView(title);
-                desc=tv("",13,Color.parseColor("#AAB5D1"),Typeface.NORMAL); desc.setId(1003); desc.setPadding(0,dp(8),0,0); desc.setMaxLines(4); info.addView(desc,new LinearLayout.LayoutParams(-1,0,1));
-                TextView tag=tv("立即查看  ›",13,Color.parseColor("#8EA0FF"),Typeface.BOLD); info.addView(tag);
-                card.addView(info,new LinearLayout.LayoutParams(0,dp(136),1));
+                TextView badge=tv("热播推荐",11,Color.parseColor("#FFE2E5"),Typeface.BOLD); badge.setBackground(strokeBg(Color.parseColor("#34141A"),1,"#E85A68",12)); badge.setPadding(dp(8),dp(4),dp(8),dp(4)); LinearLayout.LayoutParams blp=new LinearLayout.LayoutParams(-2,-2); blp.topMargin=dp(8); info.addView(badge,blp);
+                desc=tv("",13,Color.parseColor("#AAB5D1"),Typeface.NORMAL); desc.setId(1003); desc.setPadding(0,dp(10),0,0); desc.setMaxLines(4); info.addView(desc,new LinearLayout.LayoutParams(-1,0,1));
+                TextView tag=tv("进入详情  ›",13,Color.parseColor("#8EA0FF"),Typeface.BOLD); tag.setPadding(0,dp(8),0,0); info.addView(tag);
+                card.addView(info,new LinearLayout.LayoutParams(0,dp(146),1));
                 convert=card;
             }
             cover=convert.findViewById(1001); title=convert.findViewById(1002); desc=convert.findViewById(1003);
