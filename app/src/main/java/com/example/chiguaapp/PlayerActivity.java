@@ -1,15 +1,19 @@
 package com.example.chiguaapp;
 
 import android.app.Activity;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -63,6 +67,9 @@ public class PlayerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        hideSystemBars();
 
         input = getIntent().getStringExtra("input");
         if (input == null) input = getIntent().getStringExtra("url");
@@ -269,6 +276,25 @@ public class PlayerActivity extends Activity {
         return web;
     }
 
+    private void hideSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            View decor = getWindow().getDecorView();
+            decor.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+    }
+
     private void resolveAndPlay() {
         releaseSniffer();
         artReady = false;
@@ -440,7 +466,7 @@ public class PlayerActivity extends Activity {
                 + "function postError(msg){try{HermesPlayer.onError(String(msg||''));}catch(e){}}"
                 + "var center=document.getElementById('centerPlay');"
                 + "function hideCenter(){center.classList.add('hide');}function showCenter(){center.classList.remove('hide');}"
-                + "try{var art=new Artplayer({container:'#player',url:url,autoplay:true,autoSize:true,setting:true,flip:false,pip:false,screenshot:false,fullscreen:false,fullscreenWeb:false,miniProgressBar:true,backdrop:true,hotkey:false,playbackRate:true,aspectRatio:true,theme:'#4CCB89',mutex:true,volume:.7,moreVideoAttr:{playsinline:true,webkitPlaysinline:true,x5VideoPlayerType:'h5-page',x5VideoPlayerFullscreen:false,crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls({enableWorker:true,lowLatencyMode:false});hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});center.addEventListener('click',function(){art.play();hideCenter();});art.on('ready',function(){postReady();});art.on('play',function(){hideCenter();});art.on('pause',function(){showCenter();});art.on('video:ended',function(){showCenter();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});setTimeout(function(){hideCenter();},1200);}catch(e){postError(e&&e.message?e.message:'player init error');}"
+                + "try{var art=new Artplayer({container:'#player',url:url,autoplay:true,autoSize:true,setting:true,flip:false,pip:false,screenshot:false,fullscreen:true,fullscreenWeb:true,miniProgressBar:true,backdrop:true,hotkey:false,playbackRate:true,aspectRatio:true,theme:'#4CCB89',mutex:true,volume:.7,moreVideoAttr:{playsinline:true,webkitPlaysinline:true,x5VideoPlayerType:'h5-page',x5VideoPlayerFullscreen:true,crossorigin:'anonymous'},customType:{m3u8:function(video,playUrl){if(window.Hls&&Hls.isSupported()){var hls=new Hls({enableWorker:true,lowLatencyMode:false});hls.loadSource(playUrl);hls.attachMedia(video);hls.on(Hls.Events.MANIFEST_PARSED,function(){video.play().catch(function(){});});hls.on(Hls.Events.ERROR,function(evt,data){if(data&&data.fatal){postError('HLS '+data.type+' '+data.details);}});art.hls=hls;}else if(video.canPlayType('application/vnd.apple.mpegurl')){video.src=playUrl;video.addEventListener('loadedmetadata',function(){video.play().catch(function(){});});}else{postError('当前设备不支持 m3u8');}}}});center.addEventListener('click',function(){art.play();hideCenter();});art.on('ready',function(){postReady();});art.on('play',function(){hideCenter();});art.on('pause',function(){showCenter();});art.on('video:ended',function(){showCenter();});art.on('video:error',function(err){postError(err&&err.message?err.message:'video error');});art.on('error',function(err){postError(err&&err.message?err.message:'art error');});window.addEventListener('error',function(e){postError(e&&e.message?e.message:'window error');});setTimeout(function(){hideCenter();},1200);}catch(e){postError(e&&e.message?e.message:'player init error');}"
                 + "</script></body></html>";
     }
 
@@ -471,6 +497,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        hideSystemBars();
         if (playerWeb != null) playerWeb.onResume();
         if (sniffWeb != null) sniffWeb.onResume();
     }
