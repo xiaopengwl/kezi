@@ -97,7 +97,6 @@ public class MainActivity extends Activity {
         navProfileBtn.setOnClickListener(v -> startActivityForResult(new Intent(this, SourceManagerActivity.class), 9));
         listView.setOnItemClickListener((p,v,pos,id) -> {
             VideoItem it = items.get(pos);
-            if(it.url==null || it.url.trim().length()==0){ Toast.makeText(this,"这个条目没有详情地址，换一个源或分类试试",Toast.LENGTH_SHORT).show(); return; }
             Intent in = new Intent(this, DetailActivity.class);
             in.putExtra("url", it.url); in.putExtra("title", it.title); in.putExtra("img", it.img); startActivity(in);
         });
