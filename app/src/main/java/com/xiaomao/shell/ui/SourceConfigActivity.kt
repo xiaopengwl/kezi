@@ -60,7 +60,7 @@ class SourceConfigActivity : AppCompatActivity() {
                 } catch (error: Throwable) {
                     Toast.makeText(
                         this@SourceConfigActivity,
-                        getString(R.string.message_load_failed, error.message ?: "Unknown error"),
+                        getString(R.string.message_load_failed, error.message ?: getString(R.string.message_unknown_error)),
                         Toast.LENGTH_SHORT,
                     ).show()
                 }

@@ -108,7 +108,7 @@
             android:gravity="center"
             android:textColor="@color/text_primary"
             android:textStyle="bold"
-            tools:text="Page 1" />
+            tools:text="@string/label_page_preview" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonNextPage"
@@ -117,4 +117,3 @@
             android:text="@string/action_next_page" />
     </LinearLayout>
 </LinearLayout>
-

@@ -53,7 +53,7 @@
             android:textColor="@color/text_primary"
             android:textSize="18sp"
             android:textStyle="bold"
-            tools:text="Ranking Title" />
+            tools:text="@string/label_ranking_title_preview" />
 
         <TextView
             android:id="@+id/textDesc"
@@ -63,7 +63,7 @@
             android:maxLines="2"
             android:textColor="@color/text_secondary"
             android:textSize="15sp"
-            tools:text="Ranking subtitle preview" />
+            tools:text="@string/label_ranking_desc_preview" />
 
         <TextView
             android:id="@+id/textHeat"
@@ -72,6 +72,6 @@
             android:layout_marginTop="10dp"
             android:textColor="@color/seed"
             android:textSize="16sp"
-            tools:text="Heat 8105" />
+            tools:text="@string/label_rank_hot_preview" />
     </LinearLayout>
 </LinearLayout>

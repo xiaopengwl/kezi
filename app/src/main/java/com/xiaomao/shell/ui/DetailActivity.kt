@@ -80,11 +80,11 @@ class DetailActivity : AppCompatActivity() {
         }
         binding.textTitle.text = detail.title
         binding.textMeta.text = buildString {
-            appendIfNotBlank("Remarks", detail.remarks)
-            appendIfNotBlank("Year", detail.year)
-            appendIfNotBlank("Area", detail.area)
-            appendIfNotBlank("Director", detail.director)
-            appendIfNotBlank("Actor", detail.actor)
+            appendIfNotBlank(getString(R.string.label_meta_remarks), detail.remarks)
+            appendIfNotBlank(getString(R.string.label_meta_year), detail.year)
+            appendIfNotBlank(getString(R.string.label_meta_area), detail.area)
+            appendIfNotBlank(getString(R.string.label_meta_director), detail.director)
+            appendIfNotBlank(getString(R.string.label_meta_actor), detail.actor)
         }.ifBlank { getString(R.string.message_no_video_meta) }
         binding.textSummary.text = detail.summary.ifBlank { getString(R.string.message_no_summary) }
 
@@ -121,7 +121,7 @@ class DetailActivity : AppCompatActivity() {
     private fun StringBuilder.appendIfNotBlank(label: String, value: String) {
         if (value.isBlank()) return
         if (isNotEmpty()) append('\n')
-        append(label).append(": ").append(value)
+        append(label).append("：").append(value)
     }
 
     companion object {

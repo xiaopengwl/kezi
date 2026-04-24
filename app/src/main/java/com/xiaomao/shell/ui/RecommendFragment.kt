@@ -74,7 +74,7 @@ class RecommendFragment : Fragment() {
         binding.buttonContinueWatch.setOnClickListener { featuredVideo?.let(::openDetail) }
 
         binding.swipeRefresh.setOnRefreshListener { loadPage() }
-        binding.textToday.text = SimpleDateFormat("MM/dd", Locale.getDefault()).format(Date())
+        binding.textToday.text = SimpleDateFormat("MM月dd日", Locale.getDefault()).format(Date())
         loadPage()
     }
 
@@ -135,4 +135,3 @@ class RecommendFragment : Fragment() {
         super.onDestroyView()
     }
 }
-

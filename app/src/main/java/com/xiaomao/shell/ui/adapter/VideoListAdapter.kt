@@ -40,9 +40,10 @@ class VideoListAdapter(
                 error(R.drawable.ic_placeholder)
             }
             binding.textTitle.text = item.title
-            binding.textRemarks.text = item.remarks.ifBlank { "暂无备注" }
+            binding.textRemarks.text = item.remarks.ifBlank {
+                binding.root.context.getString(R.string.message_no_remarks)
+            }
             binding.root.setOnClickListener { onClick(item) }
         }
     }
 }
-

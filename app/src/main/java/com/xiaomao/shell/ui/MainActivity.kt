@@ -71,15 +71,15 @@ class MainActivity : AppCompatActivity() {
         when (tab) {
             Tab.RECOMMEND -> {
                 fragment = RecommendFragment()
-                title = "Mi Video"
+                title = getString(R.string.label_brand_recommend)
             }
             Tab.LIBRARY -> {
                 fragment = LibraryFragment()
-                title = "Film Library"
+                title = getString(R.string.label_brand_library)
             }
             Tab.CHARTS -> {
                 fragment = ChartsFragment()
-                title = "Mi Charts"
+                title = getString(R.string.label_brand_charts)
             }
             Tab.MINE -> {
                 fragment = MineFragment()
@@ -100,4 +100,3 @@ class MainActivity : AppCompatActivity() {
         MINE,
     }
 }
-

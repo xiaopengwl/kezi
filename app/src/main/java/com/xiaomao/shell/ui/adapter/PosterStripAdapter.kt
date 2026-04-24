@@ -40,9 +40,10 @@ class PosterStripAdapter(
                 crossfade(true)
             }
             binding.textTitle.text = item.title
-            binding.textSource.text = item.remarks.ifBlank { "更新中" }
+            binding.textSource.text = item.remarks.ifBlank {
+                binding.root.context.getString(R.string.message_updating)
+            }
             binding.root.setOnClickListener { onClick(item) }
         }
     }
 }
-

@@ -40,7 +40,9 @@ class RankingAdapter(
                 crossfade(true)
             }
             binding.textTitle.text = item.title
-            binding.textDesc.text = item.remarks.ifBlank { "全网热播中" }
+            binding.textDesc.text = item.remarks.ifBlank {
+                binding.root.context.getString(R.string.message_rank_hot_default_desc)
+            }
             binding.textHeat.text = binding.root.context.getString(
                 R.string.label_rank_hot,
                 8105 - (position * 357),

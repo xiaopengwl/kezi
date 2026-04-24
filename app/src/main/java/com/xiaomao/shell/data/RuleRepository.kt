@@ -40,11 +40,11 @@ class RuleRepository(
             .build()
         httpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                error("Remote sync failed: HTTP ${response.code}")
+                error("远程同步失败：HTTP ${response.code}")
             }
             val body = response.body?.string().orEmpty()
             if (body.isBlank()) {
-                error("Remote source is empty")
+                error("远程规则内容为空")
             }
             sourceStore.saveSourceText(body)
             body
@@ -102,7 +102,7 @@ class RuleRepository(
         val raw = engine.execute(sourceText = sourceText, action = action, input = input, page = page)
         val root = JsonParser.parseString(raw).asJsonObject
         if (!root.optBoolean("ok")) {
-            val message = root.optString("error").ifBlank { "Unknown error" }
+            val message = root.optString("error").ifBlank { "未知错误" }
             Log.e("RuleRepository", "execute failed: $message")
             throw IllegalStateException(message)
         }
@@ -121,7 +121,7 @@ class RuleRepository(
             }
         }.orEmpty()
         return SourceMeta(
-            title = metaObject.optString("title").ifBlank { "Xiaomao Shell" },
+            title = metaObject.optString("title").ifBlank { "小猫影视" },
             host = metaObject.optString("host"),
             searchable = metaObject.optBoolean("searchable", true),
             categories = categories,

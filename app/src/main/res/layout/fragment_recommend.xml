@@ -57,7 +57,7 @@
                                 android:textColor="@color/white"
                                 android:textSize="28sp"
                                 android:textStyle="bold"
-                                tools:text="Banner Title" />
+                                tools:text="@string/label_feature_banner_title_preview" />
 
                             <TextView
                                 android:id="@+id/textBannerDesc"
@@ -66,7 +66,7 @@
                                 android:layout_marginTop="8dp"
                                 android:textColor="@color/white"
                                 android:textSize="16sp"
-                                tools:text="Banner subtitle preview" />
+                                tools:text="@string/label_feature_banner_desc_preview" />
                         </LinearLayout>
                     </FrameLayout>
                 </com.google.android.material.card.MaterialCardView>
@@ -142,7 +142,7 @@
                         android:layout_height="wrap_content"
                         android:textColor="@color/seed"
                         android:textSize="16sp"
-                        tools:text="04/24" />
+                        tools:text="@string/label_today_preview" />
                 </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -218,7 +218,7 @@
                             android:layout_weight="1"
                             android:textColor="@color/white"
                             android:textSize="18sp"
-                            tools:text="Continue watch preview" />
+                            tools:text="@string/label_continue_preview" />
 
                         <TextView
                             android:id="@+id/buttonContinueWatch"
