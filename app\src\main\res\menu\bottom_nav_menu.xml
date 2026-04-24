@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_recommend"
+        android:icon="@drawable/ic_nav_home"
+        android:title="@string/label_recommend" />
+    <item
+        android:id="@+id/nav_library"
+        android:icon="@drawable/ic_nav_library"
+        android:title="@string/label_library" />
+    <item
+        android:id="@+id/nav_charts"
+        android:icon="@drawable/ic_nav_chart"
+        android:title="@string/label_charts" />
+    <item
+        android:id="@+id/nav_mine"
+        android:icon="@drawable/ic_nav_mine"
+        android:title="@string/label_mine" />
+</menu>
+
