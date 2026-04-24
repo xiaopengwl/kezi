@@ -12,6 +12,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import com.xiaomao.shell.AppContainer
 import com.xiaomao.shell.R
 import com.xiaomao.shell.databinding.ActivityPlayerBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class PlayerActivity : AppCompatActivity() {
@@ -48,6 +49,7 @@ class PlayerActivity : AppCompatActivity() {
                 if (result.url.isBlank()) error(getString(R.string.message_parse_failed))
                 startPlayer(result.url, result.headers)
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textStatus.text = getString(R.string.message_load_failed, error.message ?: "")
                 Toast.makeText(
                     this@PlayerActivity,

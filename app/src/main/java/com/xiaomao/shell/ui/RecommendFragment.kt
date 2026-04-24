@@ -18,6 +18,7 @@ import com.xiaomao.shell.data.model.VideoItem
 import com.xiaomao.shell.databinding.FragmentRecommendBinding
 import com.xiaomao.shell.ui.adapter.PosterStripAdapter
 import com.xiaomao.shell.ui.adapter.VideoListAdapter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -92,6 +93,7 @@ class RecommendFragment : Fragment() {
                 hotAdapter.submitList(videos.drop(5).ifEmpty { videos.take(6) })
                 binding.textEmpty.isVisible = videos.isEmpty()
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
             } finally {

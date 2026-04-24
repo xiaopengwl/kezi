@@ -16,6 +16,7 @@ import com.xiaomao.shell.data.model.VideoItem
 import com.xiaomao.shell.databinding.FragmentChartsBinding
 import com.xiaomao.shell.ui.adapter.RankingAdapter
 import com.xiaomao.shell.ui.adapter.TopCategoryAdapter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class ChartsFragment : Fragment() {
@@ -58,6 +59,7 @@ class ChartsFragment : Fragment() {
                 rankingAdapter.submitList(home.videos.take(10))
                 binding.textEmpty.isVisible = home.videos.isEmpty()
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
             } finally {
@@ -75,6 +77,7 @@ class ChartsFragment : Fragment() {
                 rankingAdapter.submitList(videos.take(10))
                 binding.textEmpty.isVisible = videos.isEmpty()
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
             } finally {
@@ -95,4 +98,3 @@ class ChartsFragment : Fragment() {
         super.onDestroyView()
     }
 }
-

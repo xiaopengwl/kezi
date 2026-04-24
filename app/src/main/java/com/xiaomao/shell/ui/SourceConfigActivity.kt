@@ -9,6 +9,7 @@ import com.xiaomao.shell.AppContainer
 import com.xiaomao.shell.R
 import com.xiaomao.shell.config.AppConfig
 import com.xiaomao.shell.databinding.ActivitySourceConfigBinding
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class SourceConfigActivity : AppCompatActivity() {
@@ -58,6 +59,7 @@ class SourceConfigActivity : AppCompatActivity() {
                     ).show()
                     setResult(Activity.RESULT_OK)
                 } catch (error: Throwable) {
+                    if (error is CancellationException) throw error
                     Toast.makeText(
                         this@SourceConfigActivity,
                         getString(R.string.message_load_failed, error.message ?: getString(R.string.message_unknown_error)),

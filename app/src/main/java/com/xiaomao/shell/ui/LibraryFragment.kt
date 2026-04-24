@@ -18,6 +18,7 @@ import com.xiaomao.shell.databinding.FragmentLibraryBinding
 import com.xiaomao.shell.ui.adapter.SideCategoryAdapter
 import com.xiaomao.shell.ui.adapter.TopCategoryAdapter
 import com.xiaomao.shell.ui.adapter.VideoListAdapter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class LibraryFragment : Fragment() {
@@ -67,9 +68,12 @@ class LibraryFragment : Fragment() {
                 topAdapter.submitList(categories.take(7), defaultCategory?.typeId)
                 sideAdapter.submitList(categories, defaultCategory?.typeId)
                 defaultCategory?.let { loadCategory(it) }
+                binding.textEmpty.isVisible = categories.isEmpty()
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
+            } finally {
                 binding.progressBar.isVisible = false
             }
         }
@@ -86,6 +90,7 @@ class LibraryFragment : Fragment() {
                 videoAdapter.submitList(videos)
                 binding.textEmpty.isVisible = videos.isEmpty()
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
             } finally {
@@ -110,4 +115,3 @@ class LibraryFragment : Fragment() {
         super.onDestroyView()
     }
 }
-

@@ -16,6 +16,7 @@ import com.xiaomao.shell.data.model.VideoDetail
 import com.xiaomao.shell.databinding.ActivityDetailBinding
 import com.xiaomao.shell.ui.adapter.EpisodeAdapter
 import com.xiaomao.shell.ui.adapter.LineAdapter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class DetailActivity : AppCompatActivity() {
@@ -59,6 +60,7 @@ class DetailActivity : AppCompatActivity() {
                 currentDetail = detail
                 render(detail)
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 binding.textSummary.text = getString(R.string.message_load_failed, error.message ?: "")
                 Toast.makeText(
                     this@DetailActivity,

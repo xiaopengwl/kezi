@@ -14,6 +14,7 @@ import com.xiaomao.shell.R
 import com.xiaomao.shell.data.model.VideoItem
 import com.xiaomao.shell.databinding.ActivitySearchBinding
 import com.xiaomao.shell.ui.adapter.VideoListAdapter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 class SearchActivity : AppCompatActivity() {
@@ -83,6 +84,7 @@ class SearchActivity : AppCompatActivity() {
                 binding.buttonPrevPage.isEnabled = currentPage > 1
                 binding.buttonNextPage.isEnabled = true
             } catch (error: Throwable) {
+                if (error is CancellationException) throw error
                 if (page > 1) currentPage -= 1
                 binding.textEmpty.isVisible = true
                 binding.textEmpty.text = getString(R.string.message_load_failed, error.message ?: "")
@@ -103,4 +105,3 @@ class SearchActivity : AppCompatActivity() {
         const val EXTRA_PRESET_KEYWORD = "extra_preset_keyword"
     }
 }
-
