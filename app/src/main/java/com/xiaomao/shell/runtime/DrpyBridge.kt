@@ -74,9 +74,9 @@ class DrpyBridge(
             if (!response.isSuccessful) {
                 throw IllegalStateException("HTTP ${response.code} ${response.message}")
             }
-            val bodyBytes = response.body?.bytes().orEmpty()
+            val bodyBytes = response.body?.bytes() ?: ByteArray(0)
             val bodyString = if (toHex) {
-                bodyBytes.joinToString(separator = "") { "%02x".format(it) }
+                bodyBytes.joinToString(separator = "") { byte -> "%02x".format(byte) }
             } else {
                 val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
                 String(bodyBytes, charset)
