@@ -12,12 +12,12 @@
     <string name="action_next_page">下一页</string>
     <string name="action_more">更多</string>
     <string name="hint_search">搜索影片、演员、关键词</string>
-    <string name="hint_source_editor">在这里粘贴或修改 xiaomaojs / drpy 规则源码</string>
+    <string name="hint_source_editor">在这里粘贴或修改 zyfun site JSON、xiaomaojs 或 drpy 规则源码</string>
     <string name="label_categories">分类</string>
     <string name="label_recommend">推荐</string>
     <string name="label_lines">播放线路</string>
     <string name="label_episodes">选集</string>
-    <string name="label_source_editor">规则源码</string>
+    <string name="label_source_editor">源配置内容</string>
     <string name="label_page_number">第 %1$d 页</string>
     <string name="label_home_recommend">首页推荐</string>
     <string name="label_plot">剧情简介</string>

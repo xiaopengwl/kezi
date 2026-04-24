@@ -1,0 +1,40 @@
+{
+  "site": [
+    {
+      "id": "c0e7442e-9b34-4f48-aea7-555dy-default",
+      "key": "555dy-default",
+      "name": "555电影",
+      "api": "https://raw.githubusercontent.com/Hiram-Wong/zyfun/main/src/main/services/FastifyService/routes/v1/film/cms/adapter/t3Drpy/drpy2.min.js",
+      "playUrl": "",
+      "search": true,
+      "group": "默认",
+      "type": 7,
+      "ext": "https://raw.githubusercontent.com/xiaopengwl/xiaomaojs/main/555dy-drpy.js",
+      "categories": "",
+      "isActive": true,
+      "createdAt": 1767000000000,
+      "updatedAt": 1767000000000
+    },
+    {
+      "id": "ab437573-e807-46a7-8f7d-4k-default",
+      "key": "4k-default",
+      "name": "4K影视",
+      "api": "https://raw.githubusercontent.com/Hiram-Wong/zyfun/main/src/main/services/FastifyService/routes/v1/film/cms/adapter/t3Drpy/drpy2.min.js",
+      "playUrl": "",
+      "search": true,
+      "group": "默认",
+      "type": 7,
+      "ext": "https://raw.githubusercontent.com/xiaopengwl/xiaomaojs/main/4Kyingshi-drpy.js",
+      "categories": "",
+      "isActive": true,
+      "createdAt": 1767000000000,
+      "updatedAt": 1767000000000
+    }
+  ],
+  "setting": [
+    {
+      "version": "3.4.1",
+      "defaultSite": "c0e7442e-9b34-4f48-aea7-555dy-default"
+    }
+  ]
+}

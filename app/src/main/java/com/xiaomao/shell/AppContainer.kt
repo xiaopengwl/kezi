@@ -18,10 +18,9 @@ object AppContainer {
 
     private fun buildRepository(context: Context): RuleRepository {
         val client = DrpyBridge.defaultClient()
-        val bridge = DrpyBridge(client)
+        val bridge = DrpyBridge(context, client)
         val engine = DrpyWebViewEngine(context, bridge)
         val sourceStore = SourceStore(context)
         return RuleRepository(sourceStore, engine, client)
     }
 }
-

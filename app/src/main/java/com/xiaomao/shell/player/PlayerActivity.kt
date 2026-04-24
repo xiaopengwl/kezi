@@ -22,6 +22,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private val playTitle by lazy { intent.getStringExtra(EXTRA_PLAY_TITLE).orEmpty() }
     private val episodeName by lazy { intent.getStringExtra(EXTRA_EPISODE_NAME).orEmpty() }
+    private val playFlag by lazy { intent.getStringExtra(EXTRA_PLAY_FLAG).orEmpty() }
     private val playUrl by lazy { intent.getStringExtra(EXTRA_PLAY_URL).orEmpty() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +46,7 @@ class PlayerActivity : AppCompatActivity() {
             binding.textStatus.visibility = View.VISIBLE
             binding.textStatus.setText(R.string.message_play_loading)
             try {
-                val result = repository.parsePlay(playUrl)
+                val result = repository.parsePlay(playFlag, playUrl)
                 if (result.url.isBlank()) error(getString(R.string.message_parse_failed))
                 startPlayer(result.url, result.headers)
             } catch (error: Throwable) {
@@ -88,6 +89,7 @@ class PlayerActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_PLAY_TITLE = "extra_play_title"
         const val EXTRA_EPISODE_NAME = "extra_episode_name"
+        const val EXTRA_PLAY_FLAG = "extra_play_flag"
         const val EXTRA_PLAY_URL = "extra_play_url"
     }
 }

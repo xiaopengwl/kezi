@@ -80,9 +80,9 @@ class RuleRepository(
         return parseDetail(response.getAsJsonObject("detail"))
     }
 
-    suspend fun parsePlay(playUrl: String): PlayResult {
+    suspend fun parsePlay(flag: String, playUrl: String): PlayResult {
         val source = sourceStore.getSourceText()
-        val response = execute(source, "lazy", input = playUrl)
+        val response = execute(source, "lazy", input = playUrl, flag = flag)
         val result = response.getAsJsonObject("play")
         return PlayResult(
             url = result.optString("url"),
@@ -98,8 +98,9 @@ class RuleRepository(
         action: String,
         input: String = "",
         page: Int = 1,
+        flag: String = "",
     ): JsonObject {
-        val raw = engine.execute(sourceText = sourceText, action = action, input = input, page = page)
+        val raw = engine.execute(sourceText = sourceText, action = action, input = input, page = page, flag = flag)
         val root = JsonParser.parseString(raw).asJsonObject
         if (!root.optBoolean("ok")) {
             val message = root.optString("error").ifBlank { "未知错误" }

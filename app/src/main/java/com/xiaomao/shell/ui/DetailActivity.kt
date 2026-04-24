@@ -109,9 +109,11 @@ class DetailActivity : AppCompatActivity() {
             currentDetail?.playGroups?.getOrNull(selectedLineIndex)?.episodes.orEmpty(),
             selectedPlayUrl = episode.playUrl,
         )
+        val playFlag = currentDetail?.playGroups?.getOrNull(selectedLineIndex)?.name.orEmpty()
         startActivity(Intent(this, com.xiaomao.shell.player.PlayerActivity::class.java).apply {
             putExtra(com.xiaomao.shell.player.PlayerActivity.EXTRA_PLAY_TITLE, currentDetail?.title.orEmpty())
             putExtra(com.xiaomao.shell.player.PlayerActivity.EXTRA_EPISODE_NAME, episode.name)
+            putExtra(com.xiaomao.shell.player.PlayerActivity.EXTRA_PLAY_FLAG, playFlag)
             putExtra(com.xiaomao.shell.player.PlayerActivity.EXTRA_PLAY_URL, episode.playUrl)
         })
     }

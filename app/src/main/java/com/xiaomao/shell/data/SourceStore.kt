@@ -12,6 +12,8 @@ class SourceStore(context: Context) {
         return if (cached.isNullOrBlank()) {
             // 首次启动自动写入内置示例源，保证应用开箱可测。
             readDefaultSource().also { saveSourceText(it) }
+        } else if (shouldUpgradeLegacyDefault(cached)) {
+            readDefaultSource().also { saveSourceText(it) }
         } else {
             cached
         }
@@ -29,5 +31,10 @@ class SourceStore(context: Context) {
 
     fun readDefaultSource(): String {
         return appContext.assets.open(AppConfig.sourceAssetPath).bufferedReader().use { it.readText() }
+    }
+
+    private fun shouldUpgradeLegacyDefault(sourceText: String): Boolean {
+        val trimmed = sourceText.trim()
+        return "51cg.fun" in trimmed || "title: '吃瓜'" in trimmed || "title: \"吃瓜\"" in trimmed
     }
 }

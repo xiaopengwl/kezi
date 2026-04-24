@@ -10,6 +10,7 @@ import android.webkit.WebViewClient
 import com.xiaomao.shell.config.AppConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -42,21 +43,37 @@ class DrpyWebViewEngine(
         action: String,
         input: String,
         page: Int,
+        flag: String = "",
     ): String = mutex.withLock {
         // 通过隐藏 WebView 执行 xiaomaojs / drpy 规则，兼容 JS 字符串脚本能力。
         val webView = webViewDeferred.await()
         readyDeferred.await()
+        ensureRuntimeReady(webView)
         val payload = org.json.JSONObject().apply {
             put("source", sourceText)
             put("action", action)
             put("input", input)
             put("page", page)
+            put("flag", flag)
         }.toString()
 
         withContext(Dispatchers.Main.immediate) {
             val script = "window.__nativeRuleRuntime.execute(${org.json.JSONObject.quote(payload)});"
             decodeJsString(awaitJs(webView, script))
         }
+    }
+
+    private suspend fun ensureRuntimeReady(webView: WebView) {
+        repeat(20) {
+            val status = withContext(Dispatchers.Main.immediate) {
+                decodeJsString(awaitJs(webView, "(window.__nativeRuleRuntime && typeof window.__nativeRuleRuntime.execute === 'function') ? 'ready' : 'pending';"))
+            }
+            if (status == "ready") {
+                return
+            }
+            delay(100)
+        }
+        error("规则运行时初始化失败")
     }
 
     @SuppressLint("SetJavaScriptEnabled")
