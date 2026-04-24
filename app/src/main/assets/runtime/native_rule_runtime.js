@@ -85,16 +85,21 @@
   }
 
   function parseRule(source) {
-    let rule = null;
     try {
-      eval(source + "\n//# sourceURL=zyfun_rule.js");
+      const factory = new Function(
+        "window",
+        source +
+          "\n//# sourceURL=zyfun_rule.js" +
+          "\nreturn typeof rule !== 'undefined' ? rule : (window.rule || null);",
+      );
+      const parsedRule = factory(window);
+      if (!parsedRule) {
+        throw new Error("未找到 rule 对象");
+      }
+      return parsedRule;
     } catch (error) {
       throw new Error("规则解析失败: " + error.message);
     }
-    if (!rule) {
-      throw new Error("未找到 rule 对象");
-    }
-    return rule;
   }
 
   function parseClasses(rule) {
@@ -278,7 +283,7 @@
 
     const tabItems = detailRule.tabs ? window.pdfa(html, detailRule.tabs) : [];
     if (!tabItems.length) {
-      const groups = parseEpisodes(html, detailRule, 0, "默认线路", rule.host);
+      const groups = parseEpisodes(html, detailRule, 0, "榛樿绾胯矾", rule.host);
       if (groups.episodes.length) {
         result.playGroups.push(groups);
       }
@@ -292,7 +297,7 @@
           detailRule.tab_text || detailRule.list_text || "body&&Text",
           rule.host,
         ),
-      ) || "线路" + (index + 1);
+      ) || "绾胯矾" + (index + 1);
       const group = parseEpisodes(html, detailRule, index, tabName, rule.host);
       if (group.episodes.length) {
         result.playGroups.push(group);
@@ -309,7 +314,7 @@
         const name = safeString(window.pdfh(itemHtml, detailRule.list_text || "body&&Text", baseUrl));
         const url = ensureAbsolute(baseUrl, window.pdfh(itemHtml, detailRule.list_url || "a&&href", baseUrl));
         return {
-          name: name || "正片",
+          name: name || "姝ｇ墖",
           url: url,
         };
       })
@@ -342,14 +347,14 @@
     const playUrls = safeString(detail.vod_play_url).split("$$$").filter(Boolean);
     const groups = [];
     for (let i = 0; i < Math.min(playFrom.length, playUrls.length); i += 1) {
-      const name = playFrom[i] || "线路" + (i + 1);
+      const name = playFrom[i] || "绾胯矾" + (i + 1);
       const episodes = playUrls[i]
         .split("#")
         .filter(Boolean)
         .map(function (episode) {
           const parts = episode.split("$");
           return {
-            name: safeString(parts[0] || "正片"),
+            name: safeString(parts[0] || "姝ｇ墖"),
             url: safeString(parts.slice(1).join("$")),
           };
         })
@@ -405,7 +410,7 @@
   }
 
   function maybeRunPreprocess(rule) {
-    const preprocess = rule["预处理"];
+    const preprocess = rule["棰勫鐞?];
     if (typeof preprocess === "string" && preprocess.indexOf("js:") === 0) {
       runJsBlock(preprocess, rule, rule.host, 1);
     }
@@ -424,38 +429,38 @@
         searchable: !!rule.searchable,
         categories: parseClasses(rule),
       };
-      if (typeof rule["推荐"] === "string" && rule["推荐"].indexOf("js:") !== 0 && rule["推荐"].indexOf(";") > -1) {
+      if (typeof rule["鎺ㄨ崘"] === "string" && rule["鎺ㄨ崘"].indexOf("js:") !== 0 && rule["鎺ㄨ崘"].indexOf(";") > -1) {
         const html = requestRule(rule, rule.host, {});
-        data.list = parseSelectorList(html, rule["推荐"], rule.host);
+        data.list = parseSelectorList(html, rule["鎺ㄨ崘"], rule.host);
       } else {
-        const list = runJsBlock(rule["推荐"], rule, rule.host, 1);
+        const list = runJsBlock(rule["鎺ㄨ崘"], rule, rule.host, 1);
         data.list = Array.isArray(list) ? list : [];
       }
     } else if (action === "category") {
-      if (typeof rule["一级"] === "string" && rule["一级"].indexOf("js:") !== 0 && rule["一级"].indexOf(";") > -1) {
+      if (typeof rule["涓€绾?] === "string" && rule["涓€绾?].indexOf("js:") !== 0 && rule["涓€绾?].indexOf(";") > -1) {
         const url = buildCategoryUrl(rule, input, page);
         const html = requestRule(rule, url, {});
-        data.list = parseSelectorList(html, rule["一级"], rule.host);
+        data.list = parseSelectorList(html, rule["涓€绾?], rule.host);
       } else {
-        const list = runJsBlock(rule["一级"], rule, buildCategoryUrl(rule, input, page), page);
+        const list = runJsBlock(rule["涓€绾?], rule, buildCategoryUrl(rule, input, page), page);
         data.list = Array.isArray(list) ? list : [];
       }
     } else if (action === "search") {
-      if (typeof rule["搜索"] === "string" && rule["搜索"].indexOf("js:") !== 0 && rule["搜索"].indexOf(";") > -1) {
+      if (typeof rule["鎼滅储"] === "string" && rule["鎼滅储"].indexOf("js:") !== 0 && rule["鎼滅储"].indexOf(";") > -1) {
         const url = buildSearchUrl(rule, input, page);
         const html = requestRule(rule, url, {});
-        data.list = parseSelectorList(html, rule["搜索"], rule.host);
+        data.list = parseSelectorList(html, rule["鎼滅储"], rule.host);
       } else {
-        const list = runJsBlock(rule["搜索"], rule, buildSearchUrl(rule, input, page), page);
+        const list = runJsBlock(rule["鎼滅储"], rule, buildSearchUrl(rule, input, page), page);
         data.list = Array.isArray(list) ? list : [];
       }
     } else if (action === "detail") {
-      if (rule["二级"] && typeof rule["二级"] === "object") {
+      if (rule["浜岀骇"] && typeof rule["浜岀骇"] === "object") {
         const detailUrl = ensureAbsolute(rule.host, input);
         const html = requestRule(rule, detailUrl, {});
-        data.detail = parseDetailBySelector(rule, html, rule["二级"]);
+        data.detail = parseDetailBySelector(rule, html, rule["浜岀骇"]);
       } else {
-        const detail = runJsBlock(rule["二级"], rule, ensureAbsolute(rule.host, input), 1);
+        const detail = runJsBlock(rule["浜岀骇"], rule, ensureAbsolute(rule.host, input), 1);
         data.detail = normalizeJsDetail(detail);
       }
     } else if (action === "lazy") {
@@ -481,7 +486,7 @@
         }
       }
     } else {
-      throw new Error("不支持的动作: " + action);
+      throw new Error("涓嶆敮鎸佺殑鍔ㄤ綔: " + action);
     }
 
     return data;
