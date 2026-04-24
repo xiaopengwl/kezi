@@ -98,7 +98,7 @@
     <FrameLayout
         android:id="@+id/navContainer"
         android:layout_width="0dp"
-        android:layout_height="92dp"
+        android:layout_height="84dp"
         android:background="@drawable/bg_bottom_nav"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -114,21 +114,6 @@
             app:itemTextColor="@color/nav_item_color"
             app:labelVisibilityMode="labeled"
             app:menu="@menu/bottom_nav_menu" />
-
-        <FrameLayout
-            android:layout_width="86dp"
-            android:layout_height="86dp"
-            android:layout_gravity="center_horizontal|top"
-            android:layout_marginTop="-18dp"
-            android:background="@drawable/bg_center_orb"
-            android:elevation="8dp">
-
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_launcher_foreground" />
-        </FrameLayout>
     </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
